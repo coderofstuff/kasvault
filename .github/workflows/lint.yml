@@ -39,4 +39,4 @@ jobs:
         with:
           eslint: true
           prettier: true
-          prettier_args: "--config ./.prettierrc"
+          prettier_args: "--check './**/*.{js,jsx,ts,tsx,css,json}' --config ./.prettierrc"
