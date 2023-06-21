@@ -1,0 +1,38 @@
+{
+    "name": "nextjs",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "next lint",
+        "format": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc"
+    },
+    "dependencies": {
+        "@emotion/react": "^11.11.0",
+        "@emotion/server": "^11.11.0",
+        "@ledgerhq/errors": "^6.12.5",
+        "@ledgerhq/hw-transport": "^6.28.3",
+        "@ledgerhq/hw-transport-webhid": "^6.27.14",
+        "@mantine/core": "^7.0.0-alpha.14",
+        "@mantine/hooks": "^7.0.0-alpha.14",
+        "@mantine/next": "^6.0.0-alpha.8",
+        "@mantine/notifications": "^7.0.0-alpha.14",
+        "@tabler/icons-react": "^2.22.0",
+        "axios": "^1.4.0",
+        "date-fns": "^2.30.0",
+        "eslint-config-next": "13.4.3",
+        "hw-app-kaspa": "github:coderofstuff/hw-app-kaspa#v0.0.1",
+        "next": "13.4.3",
+        "react": "18.2.0",
+        "react-dom": "18.2.0",
+        "react-qrcode-logo": "^2.9.0"
+    },
+    "devDependencies": {
+        "eslint": "^8.43.0",
+        "eslint-config-prettier": "^8.8.0",
+        "eslint-plugin-prettier": "^4.2.1",
+        "prettier": "^2.8.8"
+    }
+}

@@ -1,0 +1,4 @@
+.modalAddress {
+    color: var(--mantine-color-brand-0);
+    overflow-wrap: break-word;
+}

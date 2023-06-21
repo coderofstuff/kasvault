@@ -1,0 +1,10 @@
+.header {
+    width: 100%;
+}
+
+.child {
+    flex: 1;
+    flex-direction: row;
+    margin-left: 1rem;
+    margin-right: 1rem;
+}

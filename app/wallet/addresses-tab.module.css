@@ -1,0 +1,31 @@
+.medium {
+    display: flex;
+}
+
+.small {
+    display: none;
+}
+
+.addressTable td:hover {
+    cursor: pointer;
+    color: var(--mantine-color-brand-0);
+}
+
+.address {
+    overflow-wrap: break-word;
+}
+
+.address a {
+    text-decoration: none;
+}
+
+@media (max-width: 700px) {
+    .medium {
+        display: none;
+    }
+
+    .small {
+        display: flex;
+        font-size: var(--mantine-font-size-sm);
+    }
+}
