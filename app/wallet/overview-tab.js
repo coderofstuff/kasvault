@@ -7,6 +7,8 @@ import SendForm from '@/components/send-form';
 import { IconCopy, IconCheck } from '@tabler/icons-react';
 import AddressText from '@/components/address-text';
 import { fetchAddressDetails } from '@/lib/ledger';
+
+import styles from './overview-tab.module.css';
 import axios from 'axios';
 
 function delay(ms) {
@@ -109,9 +111,18 @@ export default function OverviewTab(props) {
                                 {({ copied, copy }) => (
                                     <>
                                         {copied ? (
-                                            <IconCheck color='green' size='18.5px' />
+                                            <IconCheck
+                                                color='green'
+                                                size='18.5px'
+                                                className={styles['copy-icon']}
+                                            />
                                         ) : (
-                                            <IconCopy color='white' size='18.5px' onClick={copy} />
+                                            <IconCopy
+                                                color='white'
+                                                size='18.5px'
+                                                className={styles['copy-icon']}
+                                                onClick={copy}
+                                            />
                                         )}
                                     </>
                                 )}
