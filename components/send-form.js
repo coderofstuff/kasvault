@@ -76,15 +76,13 @@ export default function SendForm(props) {
             simulateConfirmation(notifId);
         } else if (deviceType == 'usb') {
             try {
-                const targetAmount = includeFeeInAmount
-                    ? Number((amount - fee).toFixed(8))
-                    : amount;
-                const tx = await createTransaction(
-                    Math.round(targetAmount * 100000000),
+                const { tx } = createTransaction(
+                    Math.round(amount * 100000000),
                     sendTo,
                     props.addressContext.utxos,
                     props.addressContext.derivationPath,
                     props.addressContext.address,
+                    includeFeeInAmount,
                 );
 
                 const transactionId = await sendAmount(tx, deviceType);
@@ -110,20 +108,20 @@ export default function SendForm(props) {
                     fee === '-' ? Math.round(Math.random() * 10000) / 100000000 : Number(fee);
                 setCanSendAmount(Number(amount) <= props.addressContext.balance - calculatedFee);
             } else if (deviceType === 'usb') {
-                const [hasEnough, selectedUtxos, fee] = selectUtxos(
+                const [hasEnough, selectedUtxos, feeCalcResult] = selectUtxos(
                     amount * 100000000,
                     props.addressContext.utxos,
                     includeFeeInAmount,
                 );
                 if (hasEnough) {
-                    calculatedFee = fee / 100000000;
+                    calculatedFee = feeCalcResult / 100000000;
                     setCanSendAmount(true);
                 } else {
                     setCanSendAmount(false);
                 }
             }
 
-            if (fee === '-') {
+            if (fee === '-' || fee !== calculatedFee) {
                 setFee(calculatedFee);
             }
         } else {
