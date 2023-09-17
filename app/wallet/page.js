@@ -13,6 +13,7 @@ import Header from '../../components/header';
 import AddressesTab from './addresses-tab';
 import OverviewTab from './overview-tab';
 import TransactionsTab from './transactions-tab';
+import MessageTab from './message-tab';
 import { useSearchParams } from 'next/navigation';
 import { IconCircleX } from '@tabler/icons-react';
 import { format } from 'date-fns';
@@ -252,6 +253,9 @@ export default function Dashboard(props) {
                     <Tabs.Tab value='transactions' disabled={!selectedAddress}>
                         Transactions
                     </Tabs.Tab>
+                    <Tabs.Tab value='message' disabled={!selectedAddress}>
+                        Message
+                    </Tabs.Tab>
                 </Tabs.List>
 
                 <Tabs.Panel value='addresses'>
@@ -276,8 +280,13 @@ export default function Dashboard(props) {
                 <Tabs.Panel value='transactions'>
                     <TransactionsTab
                         transactions={transactions}
+                        selectedAddress={selectedAddress}
                         setSelectedAddress={setSelectedAddress}
                     />
+                </Tabs.Panel>
+
+                <Tabs.Panel value='message'>
+                    <MessageTab selectedAddress={selectedAddress} />
                 </Tabs.Panel>
             </Tabs>
         </Stack>
