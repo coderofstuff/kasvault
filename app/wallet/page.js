@@ -18,6 +18,8 @@ import { useSearchParams } from 'next/navigation';
 import { IconCircleX } from '@tabler/icons-react';
 import { format } from 'date-fns';
 
+import KaspaBIP32 from '../../lib/bip32';
+
 let loadingAddressBatch = false;
 let addressInitialized = false;
 
@@ -29,9 +31,14 @@ async function loadAddresses(
 ) {
     const addresses = [];
 
+    const { chainCode, compressedPublicKey } = await getAddress("44'/111111'/0'");
+
+    const bip32 = new KaspaBIP32(compressedPublicKey, chainCode);
+
     for (let addressIndex = from; addressIndex < to; addressIndex++) {
         const derivationPath = `44'/111111'/0'/${addressType}/${addressIndex}`;
-        const address = await getAddress(derivationPath);
+        const address = bip32.getAddress(addressType, addressIndex);
+
         onPartialSuccess({
             derivationPath,
             address,
@@ -42,6 +49,8 @@ async function loadAddresses(
             address,
         });
     }
+
+    console.info(addresses);
 
     return addresses;
 }
