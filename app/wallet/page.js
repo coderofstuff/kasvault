@@ -23,12 +23,7 @@ import KaspaBIP32 from '../../lib/bip32';
 let loadingAddressBatch = false;
 let addressInitialized = false;
 
-function loadAddresses(
-    bip32,
-    addressType = 0,
-    from = 0,
-    to = from + 10
-) {
+function loadAddresses(bip32, addressType = 0, from = 0, to = from + 10) {
     const addresses = [];
 
     for (let addressIndex = from; addressIndex < to; addressIndex++) {
@@ -45,10 +40,12 @@ function loadAddresses(
 }
 
 const addressFilter = (addressData, index) => {
-    return index == 0               // Always show the first address
-        || isDisplayedPath(addressData.derivationPath) // Always show if we've "generated" this address
-        || addressData.balance > 0  // Always show if balance is positive
-        || addressData.txCount > 0; // Always show if address has any transactions (it has been used)
+    return (
+        index == 0 || // Always show the first address
+        isDisplayedPath(addressData.derivationPath) || // Always show if we've "generated" this address
+        addressData.balance > 0 || // Always show if balance is positive
+        addressData.txCount > 0
+    ); // Always show if address has any transactions (it has been used)
 };
 
 async function loadAddressBatch(callback, callbackSetRawAddresses) {
@@ -61,7 +58,10 @@ async function loadAddressBatch(callback, callbackSetRawAddresses) {
     try {
         let rawAddresses = [];
         const loadAddressDetails = (rawAddress) => {
-            const fetchAddressPromise = fetchAddressDetails(rawAddress.address, rawAddress.derivationPath);
+            const fetchAddressPromise = fetchAddressDetails(
+                rawAddress.address,
+                rawAddress.derivationPath,
+            );
 
             return fetchAddressPromise.then((addressDetails) => {
                 rawAddress.balance = addressDetails.balance / 100000000;
@@ -82,19 +82,32 @@ async function loadAddressBatch(callback, callbackSetRawAddresses) {
         for (let page = 0, foundWithBalance = true; foundWithBalance; page++) {
             foundWithBalance = false;
 
-            const receiveAddresses = loadAddresses(bip32, 0, page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
-            const changeAddresses = loadAddresses(bip32, 1, page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+            const receiveAddresses = loadAddresses(
+                bip32,
+                0,
+                page * PAGE_SIZE,
+                page * PAGE_SIZE + PAGE_SIZE,
+            );
+            const changeAddresses = loadAddresses(
+                bip32,
+                1,
+                page * PAGE_SIZE,
+                page * PAGE_SIZE + PAGE_SIZE,
+            );
             const allAddresses = [...receiveAddresses, ...changeAddresses];
 
-            rawAddresses = [...rawAddresses, ...allAddresses.map(({ derivationPath, address }) => {
-                return {
-                    key: address,
-                    address,
-                    derivationPath,
-                    balance: 0,
-                    loading: true,
-                };
-            })];
+            rawAddresses = [
+                ...rawAddresses,
+                ...allAddresses.map(({ derivationPath, address }) => {
+                    return {
+                        key: address,
+                        address,
+                        derivationPath,
+                        balance: 0,
+                        loading: true,
+                    };
+                }),
+            ];
 
             callbackSetRawAddresses(rawAddresses);
             callback(rawAddresses.filter(addressFilter));
@@ -105,9 +118,10 @@ async function loadAddressBatch(callback, callbackSetRawAddresses) {
 
                 if (promises.length >= 5) {
                     const allAddressData = await Promise.all(promises);
-                    
+
                     for (const addressData of allAddressData) {
-                        foundWithBalance = foundWithBalance || addressData.balance > 0 || addressData.txCount > 0;
+                        foundWithBalance =
+                            foundWithBalance || addressData.balance > 0 || addressData.txCount > 0;
                     }
 
                     callback(rawAddresses.filter(addressFilter));
@@ -117,9 +131,10 @@ async function loadAddressBatch(callback, callbackSetRawAddresses) {
 
             if (promises.length) {
                 const allAddressData = await Promise.all(promises);
-                
+
                 for (const addressData of allAddressData) {
-                    foundWithBalance = foundWithBalance || addressData.balance > 0 || addressData.txCount > 0;
+                    foundWithBalance =
+                        foundWithBalance || addressData.balance > 0 || addressData.txCount > 0;
                 }
 
                 callback(rawAddresses.filter(addressFilter));
@@ -200,10 +215,12 @@ async function demoLoadAddress(setAddresses, setRawAddresses) {
 
 function isDisplayedPath(derivationPath) {
     // TODO: Switch with actual paths stored in local storage
-    return derivationPath === "44'/111111'/0'/0/0" ||
-           derivationPath === "44'/111111'/0'/0/1" ||
-           derivationPath === "44'/111111'/0'/1/0" ||
-           derivationPath === "44'/111111'/0'/1/1";
+    return (
+        derivationPath === "44'/111111'/0'/0/0" ||
+        derivationPath === "44'/111111'/0'/0/1" ||
+        derivationPath === "44'/111111'/0'/1/0" ||
+        derivationPath === "44'/111111'/0'/1/1"
+    );
 }
 
 function delay(ms = 0) {
