@@ -23,26 +23,17 @@ import KaspaBIP32 from '../../lib/bip32';
 let loadingAddressBatch = false;
 let addressInitialized = false;
 
-async function loadAddresses(
+function loadAddresses(
+    bip32,
     addressType = 0,
     from = 0,
-    to = from + 10,
-    onPartialSuccess = () => {},
+    to = from + 10
 ) {
     const addresses = [];
-
-    const { chainCode, compressedPublicKey } = await getAddress("44'/111111'/0'");
-
-    const bip32 = new KaspaBIP32(compressedPublicKey, chainCode);
 
     for (let addressIndex = from; addressIndex < to; addressIndex++) {
         const derivationPath = `44'/111111'/0'/${addressType}/${addressIndex}`;
         const address = bip32.getAddress(addressType, addressIndex);
-
-        onPartialSuccess({
-            derivationPath,
-            address,
-        });
 
         addresses.push({
             derivationPath,
@@ -50,19 +41,17 @@ async function loadAddresses(
         });
     }
 
-    console.info(addresses);
-
     return addresses;
 }
 
 const addressFilter = (addressData, index) => {
-    return true;
-    // return index == 0               // Always show the first address
-    //     || addressData.balance > 0  // Always show if balance is positive
-    //     || addressData.txCount > 0; // Always show if address has any transactions (it has been used)
+    return index == 0               // Always show the first address
+        || isDisplayedPath(addressData.derivationPath) // Always show if we've "generated" this address
+        || addressData.balance > 0  // Always show if balance is positive
+        || addressData.txCount > 0; // Always show if address has any transactions (it has been used)
 };
 
-async function loadAddressBatch(callback) {
+async function loadAddressBatch(callback, callbackSetRawAddresses) {
     if (loadingAddressBatch || addressInitialized) {
         return;
     }
@@ -70,38 +59,73 @@ async function loadAddressBatch(callback) {
     loadingAddressBatch = true;
 
     try {
-        const detailPromises = [];
-        const rawAddresses = [];
-        const receiveAddresses = await loadAddresses(0, 0, 10, ({ derivationPath, address }) => {
-            const addressData = {
-                key: address,
-                address,
-                derivationPath,
-                balance: 0,
-                loading: true,
-            };
-            rawAddresses.push(addressData);
+        let rawAddresses = [];
+        const loadAddressDetails = (rawAddress) => {
+            const fetchAddressPromise = fetchAddressDetails(rawAddress.address, rawAddress.derivationPath);
 
+            return fetchAddressPromise.then((addressDetails) => {
+                rawAddress.balance = addressDetails.balance / 100000000;
+                rawAddress.utxos = addressDetails.utxos;
+                rawAddress.txCount = addressDetails.txCount;
+                rawAddress.loading = false;
+
+                return rawAddress;
+            });
+        };
+
+        const PAGE_SIZE = 5;
+
+        const { chainCode, compressedPublicKey } = await getAddress("44'/111111'/0'");
+
+        const bip32 = new KaspaBIP32(compressedPublicKey, chainCode);
+
+        for (let page = 0, foundWithBalance = true; foundWithBalance; page++) {
+            foundWithBalance = false;
+
+            const receiveAddresses = loadAddresses(bip32, 0, page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+            const changeAddresses = loadAddresses(bip32, 1, page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+            const allAddresses = [...receiveAddresses, ...changeAddresses];
+
+            rawAddresses = [...rawAddresses, ...allAddresses.map(({ derivationPath, address }) => {
+                return {
+                    key: address,
+                    address,
+                    derivationPath,
+                    balance: 0,
+                    loading: true,
+                };
+            })];
+
+            callbackSetRawAddresses(rawAddresses);
             callback(rawAddresses.filter(addressFilter));
 
-            const fetchAddressPromise = fetchAddressDetails(address, derivationPath);
-            detailPromises.push(fetchAddressPromise);
+            let promises = [];
+            for (const rawAddress of rawAddresses) {
+                promises.push(loadAddressDetails(rawAddress));
 
-            fetchAddressPromise.then((addressDetails) => {
-                addressData.balance = addressDetails.balance / 100000000;
-                addressData.utxos = addressDetails.utxos;
-                addressData.txCount = addressDetails.txCount;
-                addressData.loading = false;
+                if (promises.length >= 5) {
+                    const allAddressData = await Promise.all(promises);
+                    
+                    for (const addressData of allAddressData) {
+                        foundWithBalance = foundWithBalance || addressData.balance > 0 || addressData.txCount > 0;
+                    }
+
+                    callback(rawAddresses.filter(addressFilter));
+                    promises = [];
+                }
+            }
+
+            if (promises.length) {
+                const allAddressData = await Promise.all(promises);
+                
+                for (const addressData of allAddressData) {
+                    foundWithBalance = foundWithBalance || addressData.balance > 0 || addressData.txCount > 0;
+                }
 
                 callback(rawAddresses.filter(addressFilter));
-            });
-        });
-        // FIXME: Handle rate limiting
-        // const changeAddresses = [];
-
-        // const addresses = [...receiveAddresses, ...changeAddresses];
-
-        const processedAddresses = await Promise.all(detailPromises);
+                promises = [];
+            }
+        }
     } finally {
         addressInitialized = true;
         loadingAddressBatch = false;
@@ -145,7 +169,7 @@ async function loadAddressTransactions(selectedAddress, setTransactions) {
 
 // let demoAddressLoading = false;
 
-async function demoLoadAddress(setAddresses) {
+async function demoLoadAddress(setAddresses, setRawAddresses) {
     const demoAddresses = [];
 
     for (let i = 0; i < 20; i++) {
@@ -161,6 +185,7 @@ async function demoLoadAddress(setAddresses) {
 
         demoAddresses.push(currAddress);
 
+        setRawAddresses([...demoAddresses]);
         setAddresses([...demoAddresses]);
 
         delay(Math.round(Math.random() * 3000)).then(() => {
@@ -173,6 +198,14 @@ async function demoLoadAddress(setAddresses) {
     }
 }
 
+function isDisplayedPath(derivationPath) {
+    // TODO: Switch with actual paths stored in local storage
+    return derivationPath === "44'/111111'/0'/0/0" ||
+           derivationPath === "44'/111111'/0'/0/1" ||
+           derivationPath === "44'/111111'/0'/1/0" ||
+           derivationPath === "44'/111111'/0'/1/1";
+}
+
 function delay(ms = 0) {
     return new Promise((resolve) => {
         setTimeout(resolve, ms);
@@ -181,6 +214,7 @@ function delay(ms = 0) {
 
 export default function Dashboard(props) {
     const [addresses, setAddresses] = useState([]);
+    const [rawAddresses, setRawAddresses] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [activeTab, setActiveTab] = useState('addresses');
@@ -216,9 +250,9 @@ export default function Dashboard(props) {
         }
 
         if (deviceType === 'usb') {
-            loadAddressBatch(setAddresses);
+            loadAddressBatch(setAddresses, setRawAddresses);
         } else if (deviceType === 'demo') {
-            demoLoadAddress(setAddresses);
+            demoLoadAddress(setAddresses, setRawAddresses);
         }
     }, [isTransportInitialized, deviceType]);
 
