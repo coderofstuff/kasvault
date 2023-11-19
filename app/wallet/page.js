@@ -166,26 +166,13 @@ async function loadAddressTransactions(selectedAddress, setTransactions) {
     setTransactions(processedTxData);
 }
 
-// let demoAddressLoading = false;
-
 async function demoLoadAddress(setAddresses, setRawAddresses, lastReceiveIndex) {
     const demoAddresses = [];
 
-    const chainCode = Buffer.from([
-        11, 165, 153, 169, 197, 186, 209, 16, 96, 101, 234, 180, 123, 72, 239, 160, 112, 244, 179,
-        30, 150, 57, 201, 208, 150, 247, 117, 107, 36, 138, 111, 244,
-    ]);
-    const compressedPublicKey = Buffer.from([
-        3, 90, 25, 171, 24, 66, 175, 67, 29, 59, 79, 168, 138, 21, 177, 254, 125, 124, 63, 110, 38,
-        232, 8, 18, 74, 16, 220, 5, 35, 53, 45, 70, 45,
-    ]);
-
-    const bip32 = new KaspaBIP32(compressedPublicKey, chainCode);
-
-    for (let i = 0; i < lastReceiveIndex; i++) {
+    for (let i = 0; i <= lastReceiveIndex; i++) {
         const currAddress = {
             key: i,
-            address: bip32.getAddress(0, i),
+            address: demoGetAddress(0, i),
             balance: Math.round(Math.random() * 10000),
             derivationPath: `44'/111111'/0'/0/${i}`,
             utxos: [],
@@ -205,6 +192,21 @@ async function demoLoadAddress(setAddresses, setRawAddresses, lastReceiveIndex) 
             });
         });
     }
+}
+
+function demoGetAddress(addressType, addressIndex) {
+    const chainCode = Buffer.from([
+        11, 165, 153, 169, 197, 186, 209, 16, 96, 101, 234, 180, 123, 72, 239, 160, 112, 244, 179,
+        30, 150, 57, 201, 208, 150, 247, 117, 107, 36, 138, 111, 244,
+    ]);
+    const compressedPublicKey = Buffer.from([
+        3, 90, 25, 171, 24, 66, 175, 67, 29, 59, 79, 168, 138, 21, 177, 254, 125, 124, 63, 110, 38,
+        232, 8, 18, 74, 16, 220, 5, 35, 53, 45, 70, 45,
+    ]);
+
+    const bip32 = new KaspaBIP32(compressedPublicKey, chainCode);
+
+    return bip32.getAddress(addressType, addressIndex);
 }
 
 function delay(ms = 0) {
@@ -231,7 +233,10 @@ export default function Dashboard(props) {
         const newReceiveAddressIndex = lastReceiveIndex + 1;
 
         const derivationPath = `44'/111111'/0'/0/${newReceiveAddressIndex}`;
-        const { address } = await getAddress(derivationPath);
+        const { address } =
+            deviceType === 'demo'
+                ? { address: demoGetAddress(0, newReceiveAddressIndex) }
+                : await getAddress(derivationPath);
         const rawAddress = {
             key: address,
             derivationPath,
@@ -242,14 +247,21 @@ export default function Dashboard(props) {
             loading: true,
         };
 
-        const newRawAddresses = [...rawAddresses, rawAddress];
-        setRawAddresses(newRawAddresses);
-        setAddresses(newRawAddresses);
+        setRawAddresses([...rawAddresses, rawAddress]);
+        setAddresses([...rawAddresses, rawAddress]);
         setLastReceiveIndex(newReceiveAddressIndex);
 
-        await loadAddressDetails(rawAddress);
+        if (deviceType === 'demo') {
+            rawAddress.balance = Math.round(Math.random() * 10000);
+            await delay(Math.round(Math.random() * 3000)).then(() => {
+                rawAddress.loading = false;
+            });
+        } else {
+            await loadAddressDetails(rawAddress);
+        }
 
-        setAddresses(newRawAddresses);
+        setRawAddresses([...rawAddresses, rawAddress]);
+        setAddresses([...rawAddresses, rawAddress]);
     }
 
     const searchParams = useSearchParams();
@@ -345,9 +357,7 @@ export default function Dashboard(props) {
                     />
 
                     <Center>
-                        <Button onClick={generateNewAddress} disabled={deviceType === 'demo'}>
-                            Generate New Address
-                        </Button>
+                        <Button onClick={generateNewAddress}>Generate New Address</Button>
                     </Center>
                 </Tabs.Panel>
 
