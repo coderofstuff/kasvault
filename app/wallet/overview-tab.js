@@ -70,14 +70,14 @@ export default function OverviewTab(props) {
 
             selectedAddress.balance = addressDetails.balance / 100000000;
             selectedAddress.utxos = addressDetails.utxos;
-            selectedAddress.txCount = addressDetails.txCount;
+            // selectedAddress.txCount = addressDetails.txCount;
 
             if (props.setAddresses) {
                 props.addresses.forEach((address) => {
                     if (address.key === selectedAddress.key) {
                         address.balance = selectedAddress.balance;
                         address.utxos = selectedAddress.utxos;
-                        address.txCount = selectedAddress.txCount;
+                        // address.txCount = selectedAddress.txCount;
                     }
                 });
                 props.setAddresses(props.addresses);

@@ -8,7 +8,7 @@ import {
     initTransport,
 } from '../../lib/ledger.js';
 import { useState, useEffect } from 'react';
-import { Stack, Tabs, Breadcrumbs, Anchor } from '@mantine/core';
+import { Stack, Tabs, Breadcrumbs, Anchor, Button, Center } from '@mantine/core';
 import Header from '../../components/header';
 import AddressesTab from './addresses-tab';
 import OverviewTab from './overview-tab';
@@ -19,6 +19,8 @@ import { IconCircleX } from '@tabler/icons-react';
 import { format } from 'date-fns';
 
 import KaspaBIP32 from '../../lib/bip32';
+
+import { useLocalStorage } from '@mantine/hooks';
 
 let loadingAddressBatch = false;
 let addressInitialized = false;
@@ -33,22 +35,38 @@ function loadAddresses(bip32, addressType = 0, from = 0, to = from + 10) {
         addresses.push({
             derivationPath,
             address,
+            addressIndex,
+            addressType,
         });
     }
 
     return addresses;
 }
 
-const addressFilter = (addressData, index) => {
-    return (
-        index == 0 || // Always show the first address
-        isDisplayedPath(addressData.derivationPath) || // Always show if we've "generated" this address
-        addressData.balance > 0 || // Always show if balance is positive
-        addressData.txCount > 0
-    ); // Always show if address has any transactions (it has been used)
+const addressFilter = (lastReceiveIndex) => {
+    return (addressData, index) => {
+        return (
+            index == 0 || // Always show the first address
+            addressData.addressIndex <= lastReceiveIndex || // Always show if we've "generated" this address
+            addressData.balance > 0
+        ); // Always show if balance is positive
+    };
 };
 
-async function loadAddressBatch(callback, callbackSetRawAddresses) {
+function loadAddressDetails(rawAddress) {
+    const fetchAddressPromise = fetchAddressDetails(rawAddress.address, rawAddress.derivationPath);
+
+    return fetchAddressPromise.then((addressDetails) => {
+        rawAddress.balance = addressDetails.balance / 100000000;
+        rawAddress.utxos = addressDetails.utxos;
+        // rawAddress.txCount = addressDetails.txCount;
+        rawAddress.loading = false;
+
+        return rawAddress;
+    });
+}
+
+async function loadAddressBatch(callback, callbackSetRawAddresses, lastReceiveIndex) {
     if (loadingAddressBatch || addressInitialized) {
         return;
     }
@@ -57,89 +75,55 @@ async function loadAddressBatch(callback, callbackSetRawAddresses) {
 
     try {
         let rawAddresses = [];
-        const loadAddressDetails = (rawAddress) => {
-            const fetchAddressPromise = fetchAddressDetails(
-                rawAddress.address,
-                rawAddress.derivationPath,
-            );
-
-            return fetchAddressPromise.then((addressDetails) => {
-                rawAddress.balance = addressDetails.balance / 100000000;
-                rawAddress.utxos = addressDetails.utxos;
-                rawAddress.txCount = addressDetails.txCount;
-                rawAddress.loading = false;
-
-                return rawAddress;
-            });
-        };
-
-        const PAGE_SIZE = 5;
 
         const { chainCode, compressedPublicKey } = await getAddress("44'/111111'/0'");
 
         const bip32 = new KaspaBIP32(compressedPublicKey, chainCode);
 
-        for (let page = 0, foundWithBalance = true; foundWithBalance; page++) {
-            foundWithBalance = false;
+        for (let addressIndex = 0; addressIndex <= lastReceiveIndex; addressIndex++) {
+            const addressType = 0; // Receive
+            const derivationPath = `44'/111111'/0'/${addressType}/${addressIndex}`;
+            const address = bip32.getAddress(addressType, addressIndex);
+            const receiveAddress = {
+                key: address,
+                address,
+                derivationPath,
+                balance: 0,
+                loading: true,
+                addressIndex,
+                addressType,
+            };
 
-            const receiveAddresses = loadAddresses(
-                bip32,
-                0,
-                page * PAGE_SIZE,
-                page * PAGE_SIZE + PAGE_SIZE,
-            );
-            const changeAddresses = loadAddresses(
-                bip32,
-                1,
-                page * PAGE_SIZE,
-                page * PAGE_SIZE + PAGE_SIZE,
-            );
-            const allAddresses = [...receiveAddresses, ...changeAddresses];
-
-            rawAddresses = [
-                ...rawAddresses,
-                ...allAddresses.map(({ derivationPath, address }) => {
-                    return {
-                        key: address,
-                        address,
-                        derivationPath,
-                        balance: 0,
-                        loading: true,
-                    };
-                }),
-            ];
+            rawAddresses.push(receiveAddress);
 
             callbackSetRawAddresses(rawAddresses);
-            callback(rawAddresses.filter(addressFilter));
+            callback(rawAddresses.filter(addressFilter(lastReceiveIndex)));
+        }
 
-            let promises = [];
-            for (const rawAddress of rawAddresses) {
-                promises.push(loadAddressDetails(rawAddress));
-
-                if (promises.length >= 5) {
-                    const allAddressData = await Promise.all(promises);
-
-                    for (const addressData of allAddressData) {
-                        foundWithBalance =
-                            foundWithBalance || addressData.balance > 0 || addressData.txCount > 0;
-                    }
-
-                    callback(rawAddresses.filter(addressFilter));
-                    promises = [];
-                }
+        let promises = [];
+        for (const rawAddress of rawAddresses) {
+            if (!rawAddress.loading) {
+                continue;
             }
 
-            if (promises.length) {
-                const allAddressData = await Promise.all(promises);
+            promises.push(
+                loadAddressDetails(rawAddress).then((data) => {
+                    callback(rawAddresses.filter(addressFilter(lastReceiveIndex)));
+                    return data;
+                }),
+            );
 
-                for (const addressData of allAddressData) {
-                    foundWithBalance =
-                        foundWithBalance || addressData.balance > 0 || addressData.txCount > 0;
-                }
+            if (promises.length >= 5) {
+                await Promise.all(promises);
 
-                callback(rawAddresses.filter(addressFilter));
                 promises = [];
             }
+        }
+
+        if (promises.length >= 0) {
+            await Promise.all(promises);
+
+            promises = [];
         }
     } finally {
         addressInitialized = true;
@@ -184,17 +168,27 @@ async function loadAddressTransactions(selectedAddress, setTransactions) {
 
 // let demoAddressLoading = false;
 
-async function demoLoadAddress(setAddresses, setRawAddresses) {
+async function demoLoadAddress(setAddresses, setRawAddresses, lastReceiveIndex) {
     const demoAddresses = [];
 
-    for (let i = 0; i < 20; i++) {
+    const chainCode = Buffer.from([
+        11, 165, 153, 169, 197, 186, 209, 16, 96, 101, 234, 180, 123, 72, 239, 160, 112, 244, 179,
+        30, 150, 57, 201, 208, 150, 247, 117, 107, 36, 138, 111, 244,
+    ]);
+    const compressedPublicKey = Buffer.from([
+        3, 90, 25, 171, 24, 66, 175, 67, 29, 59, 79, 168, 138, 21, 177, 254, 125, 124, 63, 110, 38,
+        232, 8, 18, 74, 16, 220, 5, 35, 53, 45, 70, 45,
+    ]);
+
+    const bip32 = new KaspaBIP32(compressedPublicKey, chainCode);
+
+    for (let i = 0; i < lastReceiveIndex; i++) {
         const currAddress = {
             key: i,
-            address: 'kaspa:qzese5lc37m2a9np8k5gect4l2jj8svyqq392p7aa7mxsqarjg9sjgxr4wvru',
+            address: bip32.getAddress(0, i),
             balance: Math.round(Math.random() * 10000),
-            derivationPath: "44'/111111'/0'/0/0",
+            derivationPath: `44'/111111'/0'/0/${i}`,
             utxos: [],
-            txCount: Math.round(Math.random() * 30),
             loading: true,
         };
 
@@ -213,16 +207,6 @@ async function demoLoadAddress(setAddresses, setRawAddresses) {
     }
 }
 
-function isDisplayedPath(derivationPath) {
-    // TODO: Switch with actual paths stored in local storage
-    return (
-        derivationPath === "44'/111111'/0'/0/0" ||
-        derivationPath === "44'/111111'/0'/0/1" ||
-        derivationPath === "44'/111111'/0'/1/0" ||
-        derivationPath === "44'/111111'/0'/1/1"
-    );
-}
-
 function delay(ms = 0) {
     return new Promise((resolve) => {
         setTimeout(resolve, ms);
@@ -236,6 +220,37 @@ export default function Dashboard(props) {
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [activeTab, setActiveTab] = useState('addresses');
     const [isTransportInitialized, setTransportInitialized] = useState(false);
+
+    const [lastReceiveIndex, setLastReceiveIndex] = useLocalStorage({
+        // TODO: Make keynames distinct
+        key: 'kasvault:last-receive-index',
+        defaultValue: 0,
+    });
+
+    async function generateNewAddress() {
+        const newReceiveAddressIndex = lastReceiveIndex + 1;
+
+        const derivationPath = `44'/111111'/0'/0/${newReceiveAddressIndex}`;
+        const { address } = await getAddress(derivationPath);
+        const rawAddress = {
+            key: address,
+            derivationPath,
+            address,
+            addressType: 0,
+            addressIndex: newReceiveAddressIndex,
+            balance: 0,
+            loading: true,
+        };
+
+        const newRawAddresses = [...rawAddresses, rawAddress];
+        setRawAddresses(newRawAddresses);
+        setAddresses(newRawAddresses);
+        setLastReceiveIndex(newReceiveAddressIndex);
+
+        await loadAddressDetails(rawAddress);
+
+        setAddresses(newRawAddresses);
+    }
 
     const searchParams = useSearchParams();
 
@@ -267,13 +282,15 @@ export default function Dashboard(props) {
         }
 
         if (deviceType === 'usb') {
-            loadAddressBatch(setAddresses, setRawAddresses);
+            loadAddressBatch(setAddresses, setRawAddresses, lastReceiveIndex);
         } else if (deviceType === 'demo') {
-            demoLoadAddress(setAddresses, setRawAddresses);
+            demoLoadAddress(setAddresses, setRawAddresses, lastReceiveIndex);
         }
     }, [isTransportInitialized, deviceType]);
 
     useEffect(() => {
+        // Blank it out first, then load the info for the address
+        setTransactions([]);
         loadAddressTransactions(selectedAddress, setTransactions);
     }, [selectedAddress]);
 
@@ -326,6 +343,12 @@ export default function Dashboard(props) {
                         setSelectedAddress={setSelectedAddress}
                         setActiveTab={setActiveTab}
                     />
+
+                    <Center>
+                        <Button onClick={generateNewAddress} disabled={deviceType === 'demo'}>
+                            Generate New Address
+                        </Button>
+                    </Center>
                 </Tabs.Panel>
 
                 <Tabs.Panel value='overview'>
