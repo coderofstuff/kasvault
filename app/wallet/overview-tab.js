@@ -25,8 +25,9 @@ export default function OverviewTab(props) {
 
     const selectedAddress = props.selectedAddress || {};
 
-    const partitionWidth = width >= 700 ? width / 2 - 32.5 : width - 32;
-    const divider = width >= 700 ? <Divider orientation='vertical' /> : null;
+    const partitionWidth =
+        props.containerWidth >= 700 ? props.containerWidth / 2 - 32.5 : props.containerWidth - 32;
+    const divider = props.containerWidth >= 700 ? <Divider orientation='vertical' /> : null;
 
     const updateAddressDetails = async (transactionId) => {
         if (!props.setAddresses && !props.setSelectedAddress) {

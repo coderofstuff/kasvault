@@ -8,7 +8,7 @@ import {
     initTransport,
 } from '../../lib/ledger.js';
 import { useState, useEffect } from 'react';
-import { Stack, Tabs, Breadcrumbs, Anchor, Button, Center } from '@mantine/core';
+import { Box, Stack, Tabs, Breadcrumbs, Anchor, Button, Center } from '@mantine/core';
 import Header from '../../components/header';
 import AddressesTab from './addresses-tab';
 import OverviewTab from './overview-tab';
@@ -20,7 +20,7 @@ import { format } from 'date-fns';
 
 import KaspaBIP32 from '../../lib/bip32';
 
-import { useLocalStorage } from '@mantine/hooks';
+import { useLocalStorage, useElementSize } from '@mantine/hooks';
 
 let loadingAddressBatch = false;
 let addressInitialized = false;
@@ -229,6 +229,8 @@ export default function Dashboard(props) {
         defaultValue: 0,
     });
 
+    const { ref: containerRef, width: containerWidth, height: containerHeight } = useElementSize();
+
     async function generateNewAddress() {
         const newReceiveAddressIndex = lastReceiveIndex + 1;
 
@@ -333,55 +335,67 @@ export default function Dashboard(props) {
                 <Breadcrumbs>{breadcrumbs}</Breadcrumbs>
             </Header>
 
-            <Tabs value={activeTab} onChange={setActiveTab} className={styles.tabs}>
-                <Tabs.List>
-                    <Tabs.Tab value='addresses'>Addresses</Tabs.Tab>
-                    <Tabs.Tab value='overview' disabled={!selectedAddress}>
-                        Overview
-                    </Tabs.Tab>
-                    <Tabs.Tab value='transactions' disabled={!selectedAddress}>
-                        Transactions
-                    </Tabs.Tab>
-                    <Tabs.Tab value='message' disabled={!selectedAddress}>
-                        Message
-                    </Tabs.Tab>
-                </Tabs.List>
+            <Center>
+                <Tabs
+                    value={activeTab}
+                    onChange={setActiveTab}
+                    className={styles.tabs}
+                    maw={1080}
+                    ref={containerRef}
+                >
+                    <Tabs.List>
+                        <Tabs.Tab value='addresses'>Addresses</Tabs.Tab>
+                        <Tabs.Tab value='overview' disabled={!selectedAddress}>
+                            Overview
+                        </Tabs.Tab>
+                        <Tabs.Tab value='transactions' disabled={!selectedAddress}>
+                            Transactions
+                        </Tabs.Tab>
+                        <Tabs.Tab value='message' disabled={!selectedAddress}>
+                            Message
+                        </Tabs.Tab>
+                    </Tabs.List>
 
-                <Tabs.Panel value='addresses'>
-                    <AddressesTab
-                        addresses={addresses}
-                        selectedAddress={selectedAddress}
-                        setAddresses={setAddresses}
-                        setSelectedAddress={setSelectedAddress}
-                        setActiveTab={setActiveTab}
-                    />
+                    <Tabs.Panel value='addresses'>
+                        <AddressesTab
+                            addresses={addresses}
+                            selectedAddress={selectedAddress}
+                            setAddresses={setAddresses}
+                            setSelectedAddress={setSelectedAddress}
+                            setActiveTab={setActiveTab}
+                        />
 
-                    <Center>
-                        <Button onClick={generateNewAddress}>Generate New Address</Button>
-                    </Center>
-                </Tabs.Panel>
+                        <Center>
+                            <Button onClick={generateNewAddress}>Generate New Address</Button>
+                        </Center>
+                    </Tabs.Panel>
 
-                <Tabs.Panel value='overview'>
-                    <OverviewTab
-                        addresses={addresses}
-                        selectedAddress={selectedAddress}
-                        setSelectedAddress={setSelectedAddress}
-                        setAddresses={setAddresses}
-                    />
-                </Tabs.Panel>
+                    <Tabs.Panel value='overview'>
+                        <OverviewTab
+                            addresses={addresses}
+                            selectedAddress={selectedAddress}
+                            setSelectedAddress={setSelectedAddress}
+                            setAddresses={setAddresses}
+                            containerWidth={containerWidth}
+                            containerHeight={containerHeight}
+                        />
+                    </Tabs.Panel>
 
-                <Tabs.Panel value='transactions'>
-                    <TransactionsTab
-                        transactions={transactions}
-                        selectedAddress={selectedAddress}
-                        setSelectedAddress={setSelectedAddress}
-                    />
-                </Tabs.Panel>
+                    <Tabs.Panel value='transactions'>
+                        <TransactionsTab
+                            transactions={transactions}
+                            selectedAddress={selectedAddress}
+                            setSelectedAddress={setSelectedAddress}
+                            containerWidth={containerWidth}
+                            containerHeight={containerHeight}
+                        />
+                    </Tabs.Panel>
 
-                <Tabs.Panel value='message'>
-                    <MessageTab selectedAddress={selectedAddress} />
-                </Tabs.Panel>
-            </Tabs>
+                    <Tabs.Panel value='message'>
+                        <MessageTab selectedAddress={selectedAddress} />
+                    </Tabs.Panel>
+                </Tabs>
+            </Center>
         </Stack>
     );
 }

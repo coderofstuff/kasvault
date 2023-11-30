@@ -1,9 +1,8 @@
 import styles from './transactions-tab.module.css';
 import { Anchor, Group, ScrollArea, Stack, Table, Text, Badge } from '@mantine/core';
-import { useViewportSize } from '@mantine/hooks';
 
 export default function TransactionsTab(props) {
-    const { width } = useViewportSize();
+    const width = props.containerWidth;
 
     const rows = (props.transactions || []).map((row) => {
         return (
