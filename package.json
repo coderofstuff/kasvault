@@ -25,6 +25,7 @@
         "@tabler/icons-react": "^2.42.0",
         "axios": "^1.6.2",
         "bip32": "^4.0.0",
+        "crypto-js": "^4.2.0",
         "date-fns": "^2.30.0",
         "hw-app-kaspa": "github:coderofstuff/hw-app-kaspa#v1.0.0",
         "next": "^13.5.6",

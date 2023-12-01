@@ -17,6 +17,7 @@ import MessageTab from './message-tab';
 import { useSearchParams } from 'next/navigation';
 import { IconCircleX } from '@tabler/icons-react';
 import { format } from 'date-fns';
+import sha256 from 'crypto-js/sha256';
 
 import KaspaBIP32 from '../../lib/bip32';
 
@@ -66,7 +67,7 @@ function loadAddressDetails(rawAddress) {
     });
 }
 
-async function loadAddressBatch(callback, callbackSetRawAddresses, lastReceiveIndex) {
+async function loadAddressBatch(bip32, callback, callbackSetRawAddresses, lastReceiveIndex) {
     if (loadingAddressBatch || addressInitialized) {
         return;
     }
@@ -75,10 +76,6 @@ async function loadAddressBatch(callback, callbackSetRawAddresses, lastReceiveIn
 
     try {
         let rawAddresses = [];
-
-        const { chainCode, compressedPublicKey } = await getAddress("44'/111111'/0'");
-
-        const bip32 = new KaspaBIP32(compressedPublicKey, chainCode);
 
         for (let addressIndex = 0; addressIndex <= lastReceiveIndex; addressIndex++) {
             const addressType = 0; // Receive
@@ -166,13 +163,13 @@ async function loadAddressTransactions(selectedAddress, setTransactions) {
     setTransactions(processedTxData);
 }
 
-async function demoLoadAddress(setAddresses, setRawAddresses, lastReceiveIndex) {
+async function demoLoadAddress(bip32, setAddresses, setRawAddresses, lastReceiveIndex) {
     const demoAddresses = [];
 
     for (let i = 0; i <= lastReceiveIndex; i++) {
         const currAddress = {
             key: i,
-            address: demoGetAddress(0, i),
+            address: bip32.getAddress(0, i),
             balance: Math.round(Math.random() * 10000),
             derivationPath: `44'/111111'/0'/0/${i}`,
             utxos: [],
@@ -194,7 +191,12 @@ async function demoLoadAddress(setAddresses, setRawAddresses, lastReceiveIndex) 
     }
 }
 
-function demoGetAddress(addressType, addressIndex) {
+async function getXPubFromLedger() {
+    const { chainCode, compressedPublicKey } = await getAddress("44'/111111'/0'");
+    return { chainCode, compressedPublicKey };
+}
+
+function getDemoXPub() {
     const chainCode = Buffer.from([
         11, 165, 153, 169, 197, 186, 209, 16, 96, 101, 234, 180, 123, 72, 239, 160, 112, 244, 179,
         30, 150, 57, 201, 208, 150, 247, 117, 107, 36, 138, 111, 244,
@@ -204,15 +206,45 @@ function demoGetAddress(addressType, addressIndex) {
         232, 8, 18, 74, 16, 220, 5, 35, 53, 45, 70, 45,
     ]);
 
-    const bip32 = new KaspaBIP32(compressedPublicKey, chainCode);
-
-    return bip32.getAddress(addressType, addressIndex);
+    return {
+        compressedPublicKey,
+        chainCode,
+    };
 }
 
 function delay(ms = 0) {
     return new Promise((resolve) => {
         setTimeout(resolve, ms);
     });
+}
+
+class SettingsStore {
+    constructor(storageKey) {
+        this.storageKey = `kasvault:${storageKey}`;
+        this.settings = localStorage.getItem(this.storageKey);
+
+        if (this.settings) {
+            this.settings = JSON.parse(this.settings);
+        } else {
+            this.settings = {
+                receiveAddresses: {},
+                lastReceiveIndex: 0,
+                changeAddresses: {},
+                lastChangeIndex: -1,
+                version: 0,
+            };
+            localStorage.setItem(this.storageKey, JSON.stringify(this.settings));
+        }
+    }
+
+    setSetting(property, value) {
+        this.settings[property] = value;
+        localStorage.setItem(this.storageKey, JSON.stringify(this.settings));
+    }
+
+    getSetting(property) {
+        return this.settings[property];
+    }
 }
 
 export default function Dashboard(props) {
@@ -222,22 +254,18 @@ export default function Dashboard(props) {
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [activeTab, setActiveTab] = useState('addresses');
     const [isTransportInitialized, setTransportInitialized] = useState(false);
-
-    const [lastReceiveIndex, setLastReceiveIndex] = useLocalStorage({
-        // TODO: Make keynames distinct
-        key: 'kasvault:last-receive-index',
-        defaultValue: 0,
-    });
+    const [bip32base, setBIP32Base] = useState();
+    const [userSettings, setUserSettings] = useState();
 
     const { ref: containerRef, width: containerWidth, height: containerHeight } = useElementSize();
 
     async function generateNewAddress() {
-        const newReceiveAddressIndex = lastReceiveIndex + 1;
+        const newReceiveAddressIndex = userSettings.getSetting('lastReceiveIndex') + 1;
 
         const derivationPath = `44'/111111'/0'/0/${newReceiveAddressIndex}`;
         const { address } =
             deviceType === 'demo'
-                ? { address: demoGetAddress(0, newReceiveAddressIndex) }
+                ? { address: bip32base.getAddress(0, newReceiveAddressIndex) }
                 : await getAddress(derivationPath);
         const rawAddress = {
             key: address,
@@ -251,7 +279,7 @@ export default function Dashboard(props) {
 
         setRawAddresses([...rawAddresses, rawAddress]);
         setAddresses([...rawAddresses, rawAddress]);
-        setLastReceiveIndex(newReceiveAddressIndex);
+        userSettings.setSetting('lastReceiveIndex', newReceiveAddressIndex);
 
         if (deviceType === 'demo') {
             rawAddress.balance = Math.round(Math.random() * 10000);
@@ -277,30 +305,64 @@ export default function Dashboard(props) {
 
         if (deviceType === 'demo') {
             setTransportInitialized(true);
+            const xpub = getDemoXPub();
+            setBIP32Base(new KaspaBIP32(xpub.compressedPublicKey, xpub.chainCode));
             return;
         }
 
         initTransport(deviceType)
             .then(() => {
                 setTransportInitialized(true);
+
+                return getXPubFromLedger().then((xpub) =>
+                    setBIP32Base(new KaspaBIP32(xpub.compressedPublicKey, xpub.chainCode)),
+                );
             })
             .catch((e) => {
+                setTransportInitialized(false);
                 console.error(e);
             });
-    }, [isTransportInitialized, deviceType]);
+    }, [isTransportInitialized, deviceType, bip32base]);
 
     useEffect(() => {
+        if (!bip32base) {
+            return;
+        }
+
+        // We need to somehow differentiate between different devices
+        // This gives us a unique key we can use
+        const storageKey = sha256(bip32base.rootNode.publicKey.toString('hex')).toString();
+
+        setUserSettings(new SettingsStore(storageKey));
+    }, [bip32base, deviceType]);
+
+    useEffect(() => {
+        if (!userSettings) {
+            return;
+        }
         // If not yet initialized, don't do anything yet
-        if (!isTransportInitialized) {
+        if (!bip32base) {
+            setAddresses([]);
+            setRawAddresses([]);
             return;
         }
 
         if (deviceType === 'usb') {
-            loadAddressBatch(setAddresses, setRawAddresses, lastReceiveIndex);
+            loadAddressBatch(
+                bip32base,
+                setAddresses,
+                setRawAddresses,
+                userSettings.getSetting('lastReceiveIndex'),
+            );
         } else if (deviceType === 'demo') {
-            demoLoadAddress(setAddresses, setRawAddresses, lastReceiveIndex);
+            demoLoadAddress(
+                bip32base,
+                setAddresses,
+                setRawAddresses,
+                userSettings.getSetting('lastReceiveIndex'),
+            );
         }
-    }, [isTransportInitialized, deviceType]);
+    }, [bip32base, userSettings, deviceType]);
 
     useEffect(() => {
         // Blank it out first, then load the info for the address
