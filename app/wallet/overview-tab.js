@@ -7,12 +7,14 @@ import {
     Loader,
     CopyButton,
     UnstyledButton,
+    SegmentedControl,
 } from '@mantine/core';
 import { useViewportSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useRef, useState, useEffect } from 'react';
 import KaspaQrCode from '@/components/kaspa-qrcode';
 import SendForm from '@/components/send-form';
+import MessageForm from '@/components/message-form';
 import { IconCopy, IconCheck, IconShieldCheckFilled, IconShield } from '@tabler/icons-react';
 import AddressText from '@/components/address-text';
 import { fetchAddressDetails, getAddress } from '@/lib/ledger';
@@ -25,6 +27,7 @@ export default function OverviewTab(props) {
     const groupRef = useRef(null);
     const [updatingDetails, setUpdatingDetails] = useState(false);
     const [isAddressVerified, setIsAddressVerified] = useState(false);
+    const [signView, setSignView] = useState('Transaction');
     const { width, height } = useViewportSize();
 
     const selectedAddress = props.selectedAddress || {};
@@ -148,10 +151,33 @@ export default function OverviewTab(props) {
     const scrollHeight =
         groupRef && groupRef.current ? height - groupRef.current.offsetTop : height;
 
+    let signSection = null;
+
+    switch (signView) {
+        case 'Transaction':
+            signSection = (
+                <SendForm
+                    onSuccess={updateAddressDetails}
+                    addressContext={selectedAddress}
+                    hideHeader={true}
+                />
+            );
+            break;
+        case 'Message':
+            signSection = <MessageForm selectedAddress={selectedAddress} />;
+            break;
+        default:
+            break;
+    }
+
     return (
         <>
             <ScrollArea.Autosize ref={groupRef} mah={scrollHeight}>
-                <Group pt={width >= 700 ? '2rem' : '1rem'} pb={width >= 700 ? '0rem' : '1rem'}>
+                <Group
+                    pt={width >= 700 ? '2rem' : '1rem'}
+                    pb={width >= 700 ? '0rem' : '1rem'}
+                    align='top'
+                >
                     <Stack align='center' w={partitionWidth}>
                         <Text fw={700}>Receive Address:</Text>
 
@@ -210,12 +236,15 @@ export default function OverviewTab(props) {
 
                     {divider}
 
-                    <SendForm
-                        onSuccess={updateAddressDetails}
-                        addressContext={selectedAddress}
-                        hideHeader={true}
-                        w={partitionWidth}
-                    />
+                    <Stack w={partitionWidth}>
+                        <SegmentedControl
+                            data={['Transaction', 'Message']}
+                            value={signView}
+                            onChange={setSignView}
+                            fullWidth
+                        />
+                        {signSection}
+                    </Stack>
                 </Group>
             </ScrollArea.Autosize>
         </>

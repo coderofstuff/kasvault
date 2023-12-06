@@ -34,8 +34,7 @@ export default function SendForm(props) {
     const deviceType = searchParams.get('deviceType');
     const { width: viewportWidth } = useViewportSize();
 
-    const cleanupOnSuccess = (notifId, transactionId) => {
-        notifications.hide(notifId);
+    const cleanupOnSuccess = (transactionId) => {
         const targetAmount = includeFeeInAmount ? Number((amount - fee).toFixed(8)) : amount;
         setSentAmount(targetAmount);
         setSentTo(sendTo);
@@ -58,10 +57,9 @@ export default function SendForm(props) {
         // Hide when ledger confirms
         const notifId = args[0];
 
-        cleanupOnSuccess(
-            notifId,
-            'c130ca7a3edeeeb2dc0130a8bac188c040415dc3ef2265d541336334c3c75f00',
-        );
+        notifications.hide(notifId);
+
+        cleanupOnSuccess('c130ca7a3edeeeb2dc0130a8bac188c040415dc3ef2265d541336334c3c75f00');
     }, 3000);
 
     const signAndSend = async () => {
@@ -87,7 +85,7 @@ export default function SendForm(props) {
 
                 const transactionId = await sendAmount(tx, deviceType);
 
-                cleanupOnSuccess(notifId, transactionId);
+                cleanupOnSuccess(transactionId);
             } catch (e) {
                 console.error(e);
                 notifications.show({
@@ -96,6 +94,8 @@ export default function SendForm(props) {
                     loading: false,
                 });
                 setConfirming(false);
+            } finally {
+                notifications.hide(notifId);
             }
         }
     };
