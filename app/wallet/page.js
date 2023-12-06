@@ -20,8 +20,9 @@ import { format } from 'date-fns';
 import sha256 from 'crypto-js/sha256';
 
 import KaspaBIP32 from '../../lib/bip32';
+import { delay } from '@/lib/util';
 
-import { useLocalStorage, useElementSize } from '@mantine/hooks';
+import { useElementSize } from '@mantine/hooks';
 
 let loadingAddressBatch = false;
 let addressInitialized = false;
@@ -210,12 +211,6 @@ function getDemoXPub() {
         compressedPublicKey,
         chainCode,
     };
-}
-
-function delay(ms = 0) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
-    });
 }
 
 class SettingsStore {

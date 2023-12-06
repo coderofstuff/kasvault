@@ -1,26 +1,30 @@
-import { Divider, Group, Stack, ScrollArea, Text, Loader, CopyButton } from '@mantine/core';
-import AddressModal from './address-modal';
-import { useDisclosure, useViewportSize } from '@mantine/hooks';
-import { useRef, useState } from 'react';
+import {
+    Divider,
+    Group,
+    Stack,
+    ScrollArea,
+    Text,
+    Loader,
+    CopyButton,
+    UnstyledButton,
+} from '@mantine/core';
+import { useViewportSize } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
+import { useRef, useState, useEffect } from 'react';
 import KaspaQrCode from '@/components/kaspa-qrcode';
 import SendForm from '@/components/send-form';
-import { IconCopy, IconCheck } from '@tabler/icons-react';
+import { IconCopy, IconCheck, IconShieldCheckFilled, IconShield } from '@tabler/icons-react';
 import AddressText from '@/components/address-text';
-import { fetchAddressDetails } from '@/lib/ledger';
+import { fetchAddressDetails, getAddress } from '@/lib/ledger';
+import { delay } from '@/lib/util';
 
 import styles from './overview-tab.module.css';
 import axios from 'axios';
 
-function delay(ms) {
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
-    });
-}
-
 export default function OverviewTab(props) {
     const groupRef = useRef(null);
     const [updatingDetails, setUpdatingDetails] = useState(false);
-    const [isSendModalOpen, { open: openSendModal, close: closeSendModal }] = useDisclosure(false);
+    const [isAddressVerified, setIsAddressVerified] = useState(false);
     const { width, height } = useViewportSize();
 
     const selectedAddress = props.selectedAddress || {};
@@ -28,6 +32,55 @@ export default function OverviewTab(props) {
     const partitionWidth =
         props.containerWidth >= 700 ? props.containerWidth / 2 - 32.5 : props.containerWidth - 32;
     const divider = props.containerWidth >= 700 ? <Divider orientation='vertical' /> : null;
+
+    useEffect(() => {
+        setIsAddressVerified(false);
+    }, [props.selectedAddress]);
+
+    const verifyAddress = async () => {
+        if (isAddressVerified) {
+            return;
+        }
+
+        try {
+            notifications.show({
+                title: 'Action Required',
+                message: 'Please verify the address on your device',
+                loading: true,
+            });
+
+            const { address } = await getAddress(props.selectedAddress.derivationPath, true);
+
+            if (address === props.selectedAddress.address) {
+                notifications.show({
+                    title: 'Success',
+                    message: 'Address verified!',
+                });
+                setIsAddressVerified(true);
+            } else {
+                notifications.show({
+                    title: 'Address not verified',
+                    message: 'Address does not match',
+                });
+                setIsAddressVerified(false);
+            }
+        } catch (e) {
+            if (e.statusText === 'CONDITIONS_OF_USE_NOT_SATISFIED' && e.message) {
+                notifications.show({
+                    title: 'Address not verified',
+                    message: e.message,
+                });
+            } else {
+                console.error(e);
+                notifications.show({
+                    title: 'Address not verified',
+                    message: 'Failed to verify address',
+                });
+            }
+
+            setIsAddressVerified(false);
+        }
+    };
 
     const updateAddressDetails = async (transactionId) => {
         if (!props.setAddresses && !props.setSelectedAddress) {
@@ -128,6 +181,20 @@ export default function OverviewTab(props) {
                                     </>
                                 )}
                             </CopyButton>
+                            <UnstyledButton onClick={verifyAddress}>
+                                {isAddressVerified ? (
+                                    <IconShieldCheckFilled
+                                        size='18.5px'
+                                        className={styles['verified-icon']}
+                                    />
+                                ) : (
+                                    <IconShield
+                                        color='white'
+                                        size='18.5px'
+                                        className={styles['verify-icon']}
+                                    />
+                                )}
+                            </UnstyledButton>
                         </Text>
 
                         <KaspaQrCode value={selectedAddress.address} />
@@ -139,12 +206,6 @@ export default function OverviewTab(props) {
                                 <Text fz='lg'>{selectedAddress.balance} KAS</Text>
                             )}
                         </Group>
-
-                        {/* <Button
-                        onClick={openSendModal}
-                        color='#DC143C'
-                        rightSection={<IconArrowRight size={14} />}
-                    >Send</Button> */}
                     </Stack>
 
                     {divider}
@@ -157,11 +218,6 @@ export default function OverviewTab(props) {
                     />
                 </Group>
             </ScrollArea.Autosize>
-            <AddressModal
-                opened={isSendModalOpen}
-                onClose={closeSendModal}
-                addressContext={selectedAddress}
-            />
         </>
     );
 }
