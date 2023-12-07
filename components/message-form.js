@@ -1,7 +1,7 @@
 import { Box, Group, Textarea, Button } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signMessage } from '../lib/ledger';
 
 import MessageModal from './message-modal';
@@ -19,6 +19,17 @@ export default function MessageForm(props) {
             message: (value) => (!value ? 'message required' : null),
         },
     });
+
+    useEffect(() => {
+        // Reset message
+        form.setValues({ message: '' });
+        // Close the modal if opened
+        if (opened) {
+            close();
+        }
+        // Blank out the signature
+        setSignature('');
+    }, [props.selectedAddress]);
 
     const onClickSignMessage = async () => {
         const notifId = notifications.show({

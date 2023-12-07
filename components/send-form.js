@@ -1,24 +1,29 @@
 'use client';
 
-import { Anchor, Button, Checkbox, Group, TextInput, Modal, Stack, Text } from '@mantine/core';
+import {
+    Anchor,
+    Button,
+    Checkbox,
+    Group,
+    TextInput,
+    Modal,
+    Stack,
+    Text,
+    NumberInput,
+} from '@mantine/core';
 import { useTimeout, useDisclosure, useViewportSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useSearchParams } from 'next/navigation';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createTransaction, sendAmount, selectUtxos } from '@/lib/ledger';
 import styles from './send-form.module.css';
 import AddressText from '@/components/address-text';
-
-let timeout = null;
+import { useForm } from '@mantine/form';
 
 export default function SendForm(props) {
-    const [amount, setAmount] = useState('');
-    const [sendTo, setSendTo] = useState('');
     const [confirming, setConfirming] = useState(false);
     const [fee, setFee] = useState('-');
-
-    const [errorAddress, setErrorAddress] = useState(null);
 
     const [canSendAmount, setCanSendAmount] = useState(false);
     const [includeFeeInAmount, setIncludeFeeInAmount] = useState(false);
@@ -34,24 +39,46 @@ export default function SendForm(props) {
     const deviceType = searchParams.get('deviceType');
     const { width: viewportWidth } = useViewportSize();
 
+    const form = useForm({
+        initialValues: {
+            amount: '',
+            sendTo: '',
+            includeFeeInAmount: false,
+        },
+        validate: {
+            amount: (value) => (!(Number(value) > 0) ? 'Amount must be greater than 0' : null),
+            sendTo: (value) => (!/^kaspa\:[a-z0-9]{61,63}$/.test(value) ? 'Invalid address' : null),
+        },
+        validateInputOnBlur: true,
+    });
+
+    const resetState = () => {
+        // Reset setup
+        setConfirming(false);
+        setFee('-');
+        setIncludeFeeInAmount(false);
+        form.setValues({ amount: '', sendTo: '' });
+    };
+
     const cleanupOnSuccess = (transactionId) => {
-        const targetAmount = includeFeeInAmount ? Number((amount - fee).toFixed(8)) : amount;
+        const targetAmount = includeFeeInAmount
+            ? Number((form.values.amount - fee).toFixed(8))
+            : form.values.amount;
         setSentAmount(targetAmount);
-        setSentTo(sendTo);
+        setSentTo(form.values.sendTo);
         setSentTxId(transactionId);
         openSuccessModal();
 
-        // Reset setup
-        setConfirming(false);
-        setSendTo('');
-        setAmount('');
-        setFee('-');
-        setIncludeFeeInAmount(false);
+        resetState();
 
         if (props.onSuccess) {
             props.onSuccess(transactionId);
         }
     };
+
+    useEffect(() => {
+        resetState();
+    }, [props.addressContext]);
 
     const { start: simulateConfirmation } = useTimeout((args) => {
         // Hide when ledger confirms
@@ -75,8 +102,8 @@ export default function SendForm(props) {
         } else if (deviceType == 'usb') {
             try {
                 const { tx } = createTransaction(
-                    Math.round(amount * 100000000),
-                    sendTo,
+                    Math.round(form.values.amount * 100000000),
+                    form.values.sendTo,
                     props.addressContext.utxos,
                     props.addressContext.derivationPath,
                     props.addressContext.address,
@@ -150,43 +177,38 @@ export default function SendForm(props) {
                 <TextInput
                     label='Send to Address'
                     placeholder='Address'
-                    value={sendTo}
                     onChange={(event) => {
+                        form.getInputProps('sendTo').onChange(event);
                         const curr = event.currentTarget.value;
-                        setSendTo(curr || null);
-                        calcFee(curr, amount, includeFeeInAmount);
-
-                        if (curr && !/^kaspa\:[a-z0-9]{61,63}$/.test(curr)) {
-                            setCanSendAmount(false);
-                            setErrorAddress('Invalid address format');
-                        } else {
-                            setErrorAddress(null);
-                        }
+                        calcFee(curr, form.values.amount, includeFeeInAmount);
                     }}
-                    disabled={confirming}
-                    error={errorAddress}
+                    {...form.getInputProps('sendTo')}
+                    disabled={form.getInputProps('sendTo').disabled || confirming}
                     required
                 />
 
-                {/* TODO: Add validations. When NumberInput is ready, use that here. */}
-                <TextInput
+                <NumberInput
                     label='Amount in KAS'
                     placeholder='0'
-                    value={amount}
-                    onChange={(event) => {
-                        const curr = event.currentTarget.value;
-                        setAmount(curr);
-                        calcFee(sendTo, curr, includeFeeInAmount);
-                    }}
+                    min={0}
+                    decimalScale={8}
                     disabled={confirming}
                     required
+                    {...form.getInputProps('amount')}
+                    onChange={(event) => {
+                        form.getInputProps('amount').onChange(event);
+
+                        const curr = event.currentTarget.value;
+                        calcFee(form.values.sendTo, curr, includeFeeInAmount);
+                    }}
                 />
 
                 <Checkbox
                     value={includeFeeInAmount}
                     onChange={(event) => {
-                        setIncludeFeeInAmount(event.currentTarget.checked);
-                        calcFee(sendTo, amount, event.currentTarget.checked);
+                        const curr = event.currentTarget.checked;
+                        setIncludeFeeInAmount(curr);
+                        calcFee(form.values.sendTo, form.values.amount, curr);
                     }}
                     label='Include fee in amount'
                     disabled={confirming}
@@ -197,7 +219,11 @@ export default function SendForm(props) {
                     <Text>{fee}</Text>
                 </Group>
 
-                <Button fullWidth onClick={signAndSend} disabled={confirming || !canSendAmount}>
+                <Button
+                    fullWidth
+                    onClick={signAndSend}
+                    disabled={confirming || !canSendAmount || !form.isValid()}
+                >
                     Sign with Ledger and Send
                 </Button>
             </Stack>
