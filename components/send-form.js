@@ -10,6 +10,7 @@ import {
     Stack,
     Text,
     NumberInput,
+    UnstyledButton,
 } from '@mantine/core';
 import { useTimeout, useDisclosure, useViewportSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -24,6 +25,7 @@ import { useForm } from '@mantine/form';
 export default function SendForm(props) {
     const [confirming, setConfirming] = useState(false);
     const [fee, setFee] = useState('-');
+    const [amountDescription, setAmountDescription] = useState();
 
     const [canSendAmount, setCanSendAmount] = useState(false);
 
@@ -140,21 +142,30 @@ export default function SendForm(props) {
     };
 
     const calcFee = (sendTo, amount, includeFeeInAmount) => {
+        setAmountDescription('');
+
         if (amount && sendTo) {
             let calculatedFee = '-';
             if (deviceType === 'demo') {
                 calculatedFee =
                     fee === '-' ? Math.round(Math.random() * 10000) / 100000000 : Number(fee);
                 setCanSendAmount(Number(amount) <= props.addressContext.balance - calculatedFee);
+                if (includeFeeInAmount) {
+                    setAmountDescription(`Amount after fee: ${amount - calculatedFee}`);
+                }
             } else if (deviceType === 'usb') {
                 const [hasEnough, selectedUtxos, feeCalcResult] = selectUtxos(
                     amount * 100000000,
                     props.addressContext.utxos,
                     includeFeeInAmount,
                 );
+
                 if (hasEnough) {
                     calculatedFee = feeCalcResult / 100000000;
                     setCanSendAmount(true);
+                    if (includeFeeInAmount) {
+                        setAmountDescription(`Amount after fee: ${amount - calculatedFee}`);
+                    }
                 } else {
                     setCanSendAmount(false);
                 }
@@ -166,7 +177,19 @@ export default function SendForm(props) {
         } else {
             setFee('-');
             setCanSendAmount(false);
+            setAmountDescription('');
         }
+    };
+
+    const setMaxAmount = () => {
+        const total = props.addressContext.utxos.reduce((acc, utxo) => {
+            return acc + utxo.amount;
+        }, 0);
+
+        form.setValues({
+            amount: Number((total / 100000000).toFixed(8)),
+            includeFeeInAmount: true,
+        });
     };
 
     return (
@@ -188,10 +211,20 @@ export default function SendForm(props) {
                     disabled={confirming}
                     required
                     {...form.getInputProps('amount')}
+                    rightSectionWidth={'3rem'}
+                    rightSection={
+                        <UnstyledButton aria-label='Set Max Amount' onClick={setMaxAmount}>
+                            <Text size='0.8rem' c={'brand'}>
+                                MAX
+                            </Text>
+                        </UnstyledButton>
+                    }
+                    inputWrapperOrder={['label', 'input', 'description', 'error']}
+                    description={amountDescription}
                 />
 
                 <Checkbox
-                    {...form.getInputProps('includeFeeInAmount')}
+                    {...form.getInputProps('includeFeeInAmount', { type: 'checkbox' })}
                     label='Include fee in amount'
                     disabled={confirming || form.getInputProps('includeFeeInAmount').disabled}
                 />
