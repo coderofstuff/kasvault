@@ -370,21 +370,6 @@ export default function Dashboard(props) {
         </Anchor>,
     ];
 
-    if (selectedAddress) {
-        breadcrumbs.push(
-            <Anchor
-                key='selectedAddress'
-                href={'#'}
-                onClick={() => {
-                    setSelectedAddress(null);
-                    setActiveTab('addresses');
-                }}
-            >
-                <IconCircleX />
-            </Anchor>,
-        );
-    }
-
     return (
         <Stack className={styles.main}>
             <Header>

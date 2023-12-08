@@ -8,6 +8,7 @@ import {
     CopyButton,
     UnstyledButton,
     SegmentedControl,
+    Tooltip,
 } from '@mantine/core';
 import { useViewportSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -187,6 +188,7 @@ export default function OverviewTab(props) {
                             ta={'center'}
                         >
                             <AddressText address={selectedAddress.address} />
+
                             <CopyButton value={selectedAddress.address}>
                                 {({ copied, copy }) => (
                                     <>
@@ -197,30 +199,35 @@ export default function OverviewTab(props) {
                                                 className={styles['copy-icon']}
                                             />
                                         ) : (
-                                            <IconCopy
-                                                color='white'
-                                                size='18.5px'
-                                                className={styles['copy-icon']}
-                                                onClick={copy}
-                                            />
+                                            <Tooltip label='Copy Address'>
+                                                <IconCopy
+                                                    color='white'
+                                                    size='18.5px'
+                                                    className={styles['copy-icon']}
+                                                    onClick={copy}
+                                                />
+                                            </Tooltip>
                                         )}
                                     </>
                                 )}
                             </CopyButton>
-                            <UnstyledButton onClick={verifyAddress}>
-                                {isAddressVerified ? (
-                                    <IconShieldCheckFilled
-                                        size='18.5px'
-                                        className={styles['verified-icon']}
-                                    />
-                                ) : (
-                                    <IconShield
-                                        color='white'
-                                        size='18.5px'
-                                        className={styles['verify-icon']}
-                                    />
-                                )}
-                            </UnstyledButton>
+
+                            <Tooltip label='Verify Address on device'>
+                                <UnstyledButton onClick={verifyAddress}>
+                                    {isAddressVerified ? (
+                                        <IconShieldCheckFilled
+                                            size='18.5px'
+                                            className={styles['verified-icon']}
+                                        />
+                                    ) : (
+                                        <IconShield
+                                            color='white'
+                                            size='18.5px'
+                                            className={styles['verify-icon']}
+                                        />
+                                    )}
+                                </UnstyledButton>
+                            </Tooltip>
                         </Text>
 
                         <KaspaQrCode value={selectedAddress.address} />

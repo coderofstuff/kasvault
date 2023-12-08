@@ -69,7 +69,11 @@ export default function SendForm(props) {
             ? Number((form.values.amount - fee).toFixed(8))
             : form.values.amount;
 
-        form.setValues({sentTo: form.values.sendTo, sentTxId: transactionId, sentAmount: targetAmount});
+        form.setValues({
+            sentTo: form.values.sendTo,
+            sentTxId: transactionId,
+            sentAmount: targetAmount,
+        });
         openSuccessModal();
 
         resetState();
