@@ -26,17 +26,11 @@ export default function SendForm(props) {
     const [fee, setFee] = useState('-');
 
     const [canSendAmount, setCanSendAmount] = useState(false);
-    const [includeFeeInAmount, setIncludeFeeInAmount] = useState(false);
 
     const [isSuccessModalOpen, { open: openSuccessModal, close: closeSuccessModal }] =
         useDisclosure();
-    const [sentAmount, setSentAmount] = useState('');
-    const [sentTo, setSentTo] = useState('');
-    const [sentTxId, setSentTxId] = useState(null);
 
-    const searchParams = useSearchParams();
-
-    const deviceType = searchParams.get('deviceType');
+    const deviceType = useSearchParams().get('deviceType');
     const { width: viewportWidth } = useViewportSize();
 
     const form = useForm({
@@ -44,6 +38,9 @@ export default function SendForm(props) {
             amount: '',
             sendTo: '',
             includeFeeInAmount: false,
+            sentAmount: '',
+            sentTo: '',
+            sentTxId: '',
         },
         validate: {
             amount: (value) => (!(Number(value) > 0) ? 'Amount must be greater than 0' : null),
@@ -52,21 +49,27 @@ export default function SendForm(props) {
         validateInputOnBlur: true,
     });
 
-    const resetState = () => {
+    const resetState = (resetAllValues = false) => {
         // Reset setup
         setConfirming(false);
         setFee('-');
-        setIncludeFeeInAmount(false);
-        form.setValues({ amount: '', sendTo: '' });
+        const baseValues = { amount: '', sendTo: '', includeFeeInAmount: false };
+
+        if (resetAllValues) {
+            baseValues.sentTo = '';
+            baseValues.sentTxId = '';
+            baseValues.sentAmount = '';
+        }
+
+        form.setValues(baseValues);
     };
 
     const cleanupOnSuccess = (transactionId) => {
-        const targetAmount = includeFeeInAmount
+        const targetAmount = form.values.includeFeeInAmount
             ? Number((form.values.amount - fee).toFixed(8))
             : form.values.amount;
-        setSentAmount(targetAmount);
-        setSentTo(form.values.sendTo);
-        setSentTxId(transactionId);
+
+        form.setValues({sentTo: form.values.sendTo, sentTxId: transactionId, sentAmount: targetAmount});
         openSuccessModal();
 
         resetState();
@@ -79,6 +82,11 @@ export default function SendForm(props) {
     useEffect(() => {
         resetState();
     }, [props.addressContext]);
+
+    useEffect(() => {
+        // Whenever any of fields change, we calculate the fees
+        calcFee(form.values.sendTo, form.values.amount, form.values.includeFeeInAmount);
+    }, [form.values.sendTo, form.values.amount, form.values.includeFeeInAmount]);
 
     const { start: simulateConfirmation } = useTimeout((args) => {
         // Hide when ledger confirms
@@ -107,7 +115,7 @@ export default function SendForm(props) {
                     props.addressContext.utxos,
                     props.addressContext.derivationPath,
                     props.addressContext.address,
-                    includeFeeInAmount,
+                    form.values.includeFeeInAmount,
                 );
 
                 const transactionId = await sendAmount(tx, deviceType);
@@ -157,31 +165,12 @@ export default function SendForm(props) {
         }
     };
 
-    const headerDetails = !props.hideHeader ? (
-        <>
-            <Text fw={700}>Address:</Text>
-            <Text className={styles.modalAddress}>{props.addressContext.address}</Text>
-
-            <Group justify='space-between'>
-                <Text fw={700}>Balance:</Text>
-                <Text>{props.addressContext.balance}</Text>
-            </Group>
-        </>
-    ) : null;
-
     return (
         <>
             <Stack {...props}>
-                {headerDetails}
-
                 <TextInput
                     label='Send to Address'
                     placeholder='Address'
-                    onChange={(event) => {
-                        form.getInputProps('sendTo').onChange(event);
-                        const curr = event.currentTarget.value;
-                        calcFee(curr, form.values.amount, includeFeeInAmount);
-                    }}
                     {...form.getInputProps('sendTo')}
                     disabled={form.getInputProps('sendTo').disabled || confirming}
                     required
@@ -195,23 +184,12 @@ export default function SendForm(props) {
                     disabled={confirming}
                     required
                     {...form.getInputProps('amount')}
-                    onChange={(event) => {
-                        form.getInputProps('amount').onChange(event);
-
-                        const curr = event.currentTarget.value;
-                        calcFee(form.values.sendTo, curr, includeFeeInAmount);
-                    }}
                 />
 
                 <Checkbox
-                    value={includeFeeInAmount}
-                    onChange={(event) => {
-                        const curr = event.currentTarget.checked;
-                        setIncludeFeeInAmount(curr);
-                        calcFee(form.values.sendTo, form.values.amount, curr);
-                    }}
+                    {...form.getInputProps('includeFeeInAmount')}
                     label='Include fee in amount'
-                    disabled={confirming}
+                    disabled={confirming || form.getInputProps('includeFeeInAmount').disabled}
                 />
 
                 <Group justify='space-between'>
@@ -242,18 +220,18 @@ export default function SendForm(props) {
                     <Text fw={600}>Transaction ID</Text>
 
                     <Anchor
-                        href={`https://explorer.kaspa.org/txs/${sentTxId}`}
+                        href={`https://explorer.kaspa.org/txs/${form.values.sentTxId}`}
                         target='_blank'
                         c='brand'
                         align='center'
                         w={'calc(var(--modal-size) - 6rem)'}
                         style={{ overflowWrap: 'break-word' }}
                     >
-                        {sentTxId}
+                        {form.values.sentTxId}
                     </Anchor>
 
                     <Text component='h2' align='center' fw={600}>
-                        {sentAmount} KAS
+                        {form.values.sentAmount} KAS
                     </Text>
 
                     <Text align='center'>sent to</Text>
@@ -263,7 +241,7 @@ export default function SendForm(props) {
                         style={{ overflowWrap: 'break-word' }}
                         align='center'
                     >
-                        <AddressText address={sentTo} />
+                        <AddressText address={form.values.sentTo} />
                     </Text>
 
                     <Button onClick={closeSuccessModal}>Close</Button>
