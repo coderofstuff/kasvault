@@ -36,6 +36,7 @@ export default function MessageForm(props) {
             title: 'Action Required',
             message: 'Please review the message on your device',
             loading: true,
+            autoClose: false,
         });
 
         try {
@@ -48,16 +49,19 @@ export default function MessageForm(props) {
             if (e.statusText === 'CONDITIONS_OF_USE_NOT_SATISFIED' && e.message) {
                 notifications.show({
                     title: 'Error',
+                    color: 'red',
                     message: e.message,
                 });
             } else if (e.statusCode == 45073) {
                 notifications.show({
                     title: 'Error',
+                    color: 'red',
                     message: 'Message too long',
                 });
             } else {
                 notifications.show({
                     title: 'Error',
+                    color: 'red',
                     message: 'Message signing failed',
                 });
                 console.error(e);

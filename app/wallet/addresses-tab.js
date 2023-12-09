@@ -77,24 +77,26 @@ export default function AddressesTab(props) {
                                 <Badge
                                     ml={'1rem'}
                                     rightSection={
-                                        <Tooltip label='Clear Address'>
-                                            <UnstyledButton
-                                                style={{
-                                                    height: '1rem',
-                                                    width: '1rem',
-                                                }}
-                                                onClick={() => {
-                                                    props.setSelectedAddress(null);
-                                                }}
-                                            >
-                                                <IconCircleX
+                                        props.addresses?.length > 1 ? (
+                                            <Tooltip label='Clear Address'>
+                                                <UnstyledButton
                                                     style={{
                                                         height: '1rem',
                                                         width: '1rem',
                                                     }}
-                                                />
-                                            </UnstyledButton>
-                                        </Tooltip>
+                                                    onClick={() => {
+                                                        props.setSelectedAddress(null);
+                                                    }}
+                                                >
+                                                    <IconCircleX
+                                                        style={{
+                                                            height: '1rem',
+                                                            width: '1rem',
+                                                        }}
+                                                    />
+                                                </UnstyledButton>
+                                            </Tooltip>
+                                        ) : null
                                     }
                                 >
                                     Selected
@@ -107,19 +109,23 @@ export default function AddressesTab(props) {
                                 </Group>
                             </Group>
                         </Stack>
-                    ) : (
+                    ) : props.addresses?.length > 1 ? (
                         <Text fs='italic'>Click a row to select an address</Text>
-                    )}
+                    ) : null}
                 </Group>
             </Box>
 
-            <Divider />
+            {props.addresses?.length > 1 ? (
+                <>
+                    <Divider />
 
-            <ScrollArea.Autosize mah={600} mx='auto'>
-                <Table className={styles.addressTable}>
-                    <Table.Tbody>{rows}</Table.Tbody>
-                </Table>
-            </ScrollArea.Autosize>
+                    <ScrollArea.Autosize mah={600} mx='auto'>
+                        <Table className={styles.addressTable}>
+                            <Table.Tbody>{rows}</Table.Tbody>
+                        </Table>
+                    </ScrollArea.Autosize>
+                </>
+            ) : null}
         </>
     );
 }

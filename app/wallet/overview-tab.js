@@ -46,13 +46,14 @@ export default function OverviewTab(props) {
             return;
         }
 
-        try {
-            notifications.show({
-                title: 'Action Required',
-                message: 'Please verify the address on your device',
-                loading: true,
-            });
+        const notifId = notifications.show({
+            title: 'Action Required',
+            message: 'Please verify the address on your device',
+            loading: true,
+            autoClose: false,
+        });
 
+        try {
             const { address } = await getAddress(props.selectedAddress.derivationPath, true);
 
             if (address === props.selectedAddress.address) {
@@ -83,6 +84,8 @@ export default function OverviewTab(props) {
             }
 
             setIsAddressVerified(false);
+        } finally {
+            notifications.hide(notifId);
         }
     };
 

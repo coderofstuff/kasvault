@@ -109,6 +109,7 @@ export default function SendForm(props) {
             title: 'Confirming',
             message: `Review and Confirm the transaction in your Ledger`,
             loading: true,
+            autoClose: false,
         });
 
         if (deviceType == 'demo') {
@@ -131,6 +132,7 @@ export default function SendForm(props) {
                 console.error(e);
                 notifications.show({
                     title: 'Error',
+                    color: 'red',
                     message: e.message,
                     loading: false,
                 });
