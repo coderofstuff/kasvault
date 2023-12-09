@@ -22,6 +22,7 @@ import KaspaBIP32 from '../../lib/bip32';
 import { delay } from '@/lib/util';
 
 import { useElementSize } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
 
 let loadingAddressBatch = false;
 let addressInitialized = false;
@@ -304,18 +305,31 @@ export default function Dashboard(props) {
             return;
         }
 
+        let unloaded = false;
+
         initTransport(deviceType)
             .then(() => {
-                setTransportInitialized(true);
+                if (!unloaded) {
+                    setTransportInitialized(true);
 
-                return getXPubFromLedger().then((xpub) =>
-                    setBIP32Base(new KaspaBIP32(xpub.compressedPublicKey, xpub.chainCode)),
-                );
+                    return getXPubFromLedger().then((xpub) =>
+                        setBIP32Base(new KaspaBIP32(xpub.compressedPublicKey, xpub.chainCode)),
+                    );
+                }
             })
             .catch((e) => {
-                setTransportInitialized(false);
+                notifications.show({
+                    title: 'Error',
+                    color: 'red',
+                    message: 'Please make sure your device is unlocked and the Kaspa app is open',
+                    autoClose: false,
+                });
                 console.error(e);
             });
+
+        return () => {
+            unloaded = true;
+        };
     }, [isTransportInitialized, deviceType, bip32base]);
 
     useEffect(() => {
