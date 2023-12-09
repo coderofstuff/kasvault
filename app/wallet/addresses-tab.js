@@ -16,6 +16,7 @@ import {
     UnstyledButton,
 } from '@mantine/core';
 import { IconCircleX } from '@tabler/icons-react';
+import { useEffect } from 'react';
 
 export default function AddressesTab(props) {
     const width = props.containerWidth;
@@ -54,6 +55,12 @@ export default function AddressesTab(props) {
             </Table.Tr>
         );
     });
+
+    useEffect(() => {
+        if (props.addresses?.length === 1) {
+            props.setSelectedAddress(props.addresses[0]);
+        }
+    }, [props.addresses]);
 
     return (
         <>
