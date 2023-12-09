@@ -15,7 +15,7 @@ import {
     Tooltip,
     UnstyledButton,
 } from '@mantine/core';
-import { IconCircleCheck, IconEraser } from '@tabler/icons-react';
+import { IconCircleX } from '@tabler/icons-react';
 
 export default function AddressesTab(props) {
     const width = props.containerWidth;
@@ -26,6 +26,10 @@ export default function AddressesTab(props) {
     };
 
     const rows = (props.addresses || []).map((row) => {
+        if (row.address === props.selectedAddress?.address) {
+            return null;
+        }
+
         return (
             <Table.Tr
                 key={row.key}
@@ -38,12 +42,6 @@ export default function AddressesTab(props) {
                     <Stack className={styles.small} justify='space-between'>
                         <Text className={styles.address} w={width - 40}>
                             <AddressText address={row.address} />
-                            {props.selectedAddress &&
-                            props.selectedAddress.address === row.address ? (
-                                <Badge ml={'1rem'}>Selected</Badge>
-                            ) : (
-                                ''
-                            )}
                         </Text>
                         <Group justify='space-between'>
                             <Group>
@@ -65,20 +63,43 @@ export default function AddressesTab(props) {
                 }}
             >
                 <Group>
-                    <Text fw={600}>Selected Address:</Text>
                     {props.selectedAddress ? (
-                        <>
-                            <AddressText address={props.selectedAddress.address} />
-                            <Tooltip label='Clear Address'>
-                                <UnstyledButton
-                                    onClick={() => {
-                                        props.setSelectedAddress(null);
-                                    }}
+                        <Stack className={styles.small} justify='space-between'>
+                            <Text className={styles.address} w={width - 40}>
+                                <AddressText address={props.selectedAddress.address} />
+                                <Badge
+                                    ml={'1rem'}
+                                    rightSection={
+                                        <Tooltip label='Clear Address'>
+                                            <UnstyledButton
+                                                style={{
+                                                    height: '1rem',
+                                                    width: '1rem',
+                                                }}
+                                                onClick={() => {
+                                                    props.setSelectedAddress(null);
+                                                }}
+                                            >
+                                                <IconCircleX
+                                                    style={{
+                                                        height: '1rem',
+                                                        width: '1rem',
+                                                    }}
+                                                />
+                                            </UnstyledButton>
+                                        </Tooltip>
+                                    }
                                 >
-                                    <IconEraser />
-                                </UnstyledButton>
-                            </Tooltip>
-                        </>
+                                    Selected
+                                </Badge>
+                            </Text>
+                            <Group justify='space-between'>
+                                <Group>
+                                    <Text fw={700}>Balance:</Text>
+                                    <Text>{props.selectedAddress.balance}</Text>
+                                </Group>
+                            </Group>
+                        </Stack>
                     ) : (
                         <Text fs='italic'>Click a row to select an address</Text>
                     )}
