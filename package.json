@@ -24,6 +24,7 @@
         "@mantine/notifications": "^7.2.2",
         "@tabler/icons-react": "^2.42.0",
         "axios": "^1.6.2",
+        "axios-retry": "^4.0.0",
         "bip32": "^4.0.0",
         "crypto-js": "^4.2.0",
         "date-fns": "^2.30.0",

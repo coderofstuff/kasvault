@@ -18,11 +18,10 @@ import SendForm from '@/components/send-form';
 import MessageForm from '@/components/message-form';
 import { IconCopy, IconCheck, IconShieldCheckFilled, IconShield } from '@tabler/icons-react';
 import AddressText from '@/components/address-text';
-import { fetchAddressDetails, getAddress } from '@/lib/ledger';
+import { fetchAddressDetails, fetchTransaction, getAddress } from '@/lib/ledger';
 import { delay } from '@/lib/util';
 
 import styles from './overview-tab.module.css';
-import axios from 'axios';
 
 export default function OverviewTab(props) {
     const groupRef = useRef(null);
@@ -100,11 +99,9 @@ export default function OverviewTab(props) {
             // Data needs some time to propagrate. Before we load new info, let's wait
             await delay(1500);
 
-            for (let tries = 0; tries < 3; tries++) {
+            for (let tries = 0; tries < 10; tries++) {
                 try {
-                    const { data: txData } = await axios.get(
-                        `https://api.kaspa.org/transactions/${transactionId}`,
-                    );
+                    const txData = await fetchTransaction(transactionId);
 
                     if (txData.is_accepted) {
                         break;
@@ -131,6 +128,7 @@ export default function OverviewTab(props) {
 
             selectedAddress.balance = addressDetails.balance / 100000000;
             selectedAddress.utxos = addressDetails.utxos;
+            selectedAddress.newTransactions++;
             // selectedAddress.txCount = addressDetails.txCount;
 
             if (props.setAddresses) {
@@ -138,6 +136,7 @@ export default function OverviewTab(props) {
                     if (address.key === selectedAddress.key) {
                         address.balance = selectedAddress.balance;
                         address.utxos = selectedAddress.utxos;
+                        address.newTransactions = selectedAddress.newTransactions;
                         // address.txCount = selectedAddress.txCount;
                     }
                 });

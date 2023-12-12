@@ -1,12 +1,7 @@
 'use client';
 
 import styles from './page.module.css';
-import {
-    getAddress,
-    fetchAddressDetails,
-    fetchTransactions,
-    initTransport,
-} from '../../lib/ledger.js';
+import { getAddress, fetchAddressDetails, initTransport } from '../../lib/ledger.js';
 import { useState, useEffect } from 'react';
 import { Box, Stack, Tabs, Breadcrumbs, Anchor, Button, Center } from '@mantine/core';
 import Header from '../../components/header';
@@ -15,7 +10,6 @@ import OverviewTab from './overview-tab';
 import TransactionsTab from './transactions-tab';
 import { useSearchParams } from 'next/navigation';
 import { LockedDeviceError } from '@ledgerhq/errors';
-import { format } from 'date-fns';
 import sha256 from 'crypto-js/sha256';
 
 import KaspaBIP32 from '../../lib/bip32';
@@ -89,6 +83,7 @@ async function loadAddressBatch(bip32, callback, callbackSetRawAddresses, lastRe
                 derivationPath,
                 balance: 0,
                 loading: true,
+                newTransactions: 0,
                 addressIndex,
                 addressType,
             };
@@ -128,41 +123,6 @@ async function loadAddressBatch(bip32, callback, callbackSetRawAddresses, lastRe
         addressInitialized = true;
         loadingAddressBatch = false;
     }
-}
-
-async function loadAddressTransactions(selectedAddress, setTransactions) {
-    if (!selectedAddress) {
-        setTransactions([]);
-        return;
-    }
-
-    const txsData = await fetchTransactions(selectedAddress.address, 0, 10);
-
-    const processedTxData = txsData.map((tx) => {
-        const myInputSum = tx.inputs.reduce((prev, curr) => {
-            if (curr.previous_outpoint_address === selectedAddress.address) {
-                return prev + curr.previous_outpoint_amount;
-            }
-
-            return prev;
-        }, 0);
-        const myOutputSum = tx.outputs.reduce((prev, curr) => {
-            if (curr.script_public_key_address === selectedAddress.address) {
-                return prev + curr.amount;
-            }
-
-            return prev;
-        }, 0);
-
-        return {
-            key: tx.transaction_id,
-            timestamp: format(new Date(tx.block_time), 'yyyy-MM-dd HH:mm:ss'),
-            transactionId: tx.transaction_id,
-            amount: (myOutputSum - myInputSum) / 100000000,
-        };
-    });
-
-    setTransactions(processedTxData);
 }
 
 async function demoLoadAddress(bip32, setAddresses, setRawAddresses, lastReceiveIndex) {
@@ -246,7 +206,6 @@ class SettingsStore {
 export default function Dashboard(props) {
     const [addresses, setAddresses] = useState([]);
     const [rawAddresses, setRawAddresses] = useState([]);
-    const [transactions, setTransactions] = useState([]);
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [activeTab, setActiveTab] = useState('addresses');
     const [isTransportInitialized, setTransportInitialized] = useState(false);
@@ -416,12 +375,6 @@ export default function Dashboard(props) {
         }
     }, [bip32base, userSettings, deviceType]);
 
-    useEffect(() => {
-        // Blank it out first, then load the info for the address
-        setTransactions([]);
-        loadAddressTransactions(selectedAddress, setTransactions);
-    }, [selectedAddress]);
-
     const breadcrumbs = [
         <Anchor key='home' href={'/'}>
             Home
@@ -483,11 +436,11 @@ export default function Dashboard(props) {
 
                     <Tabs.Panel value='transactions'>
                         <TransactionsTab
-                            transactions={transactions}
                             selectedAddress={selectedAddress}
                             setSelectedAddress={setSelectedAddress}
                             containerWidth={containerWidth}
                             containerHeight={containerHeight}
+                            newTransactions={selectedAddress ? selectedAddress.newTransactions : 0}
                         />
                     </Tabs.Panel>
                 </Tabs>
