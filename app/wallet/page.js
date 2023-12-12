@@ -14,7 +14,7 @@ import AddressesTab from './addresses-tab';
 import OverviewTab from './overview-tab';
 import TransactionsTab from './transactions-tab';
 import { useSearchParams } from 'next/navigation';
-import { IconCircleX } from '@tabler/icons-react';
+import { LockedDeviceError } from '@ledgerhq/errors';
 import { format } from 'date-fns';
 import sha256 from 'crypto-js/sha256';
 
@@ -23,6 +23,7 @@ import { delay } from '@/lib/util';
 
 import { useElementSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
+import { eslint } from '@/next.config';
 
 let loadingAddressBatch = false;
 let addressInitialized = false;
@@ -251,42 +252,83 @@ export default function Dashboard(props) {
     const [isTransportInitialized, setTransportInitialized] = useState(false);
     const [bip32base, setBIP32Base] = useState();
     const [userSettings, setUserSettings] = useState();
+    const [enableGenerate, setEnableGenerate] = useState(false);
 
     const { ref: containerRef, width: containerWidth, height: containerHeight } = useElementSize();
 
     async function generateNewAddress() {
-        const newReceiveAddressIndex = userSettings.getSetting('lastReceiveIndex') + 1;
+        setEnableGenerate(false);
+        try {
+            const newReceiveAddressIndex = userSettings.getSetting('lastReceiveIndex') + 1;
 
-        const derivationPath = `44'/111111'/0'/0/${newReceiveAddressIndex}`;
-        const { address } =
-            deviceType === 'demo'
-                ? { address: bip32base.getAddress(0, newReceiveAddressIndex) }
-                : await getAddress(derivationPath);
-        const rawAddress = {
-            key: address,
-            derivationPath,
-            address,
-            addressType: 0,
-            addressIndex: newReceiveAddressIndex,
-            balance: 0,
-            loading: true,
-        };
+            const derivationPath = `44'/111111'/0'/0/${newReceiveAddressIndex}`;
+            const { address } =
+                deviceType === 'demo'
+                    ? { address: bip32base.getAddress(0, newReceiveAddressIndex) }
+                    : await getAddress(derivationPath);
+            const rawAddress = {
+                key: address,
+                derivationPath,
+                address,
+                addressType: 0,
+                addressIndex: newReceiveAddressIndex,
+                balance: 0,
+                loading: true,
+            };
 
-        setRawAddresses([...rawAddresses, rawAddress]);
-        setAddresses([...rawAddresses, rawAddress]);
-        userSettings.setSetting('lastReceiveIndex', newReceiveAddressIndex);
+            setRawAddresses([...rawAddresses, rawAddress]);
+            setAddresses([...rawAddresses, rawAddress]);
+            userSettings.setSetting('lastReceiveIndex', newReceiveAddressIndex);
 
-        if (deviceType === 'demo') {
-            rawAddress.balance = Math.round(Math.random() * 10000);
-            await delay(Math.round(Math.random() * 3000)).then(() => {
-                rawAddress.loading = false;
-            });
-        } else {
-            await loadAddressDetails(rawAddress);
+            try {
+                if (deviceType === 'demo') {
+                    rawAddress.balance = Math.round(Math.random() * 10000);
+                    await delay(Math.round(Math.random() * 3000)).then(() => {
+                        rawAddress.loading = false;
+                    });
+                } else {
+                    await loadAddressDetails(rawAddress);
+                }
+
+                setRawAddresses([...rawAddresses, rawAddress]);
+                setAddresses([...rawAddresses, rawAddress]);
+            } catch (e) {
+                console.error(e);
+                notifications.show({
+                    title: 'Error',
+                    message: 'Unable to load address details. Refresh the page to retry.',
+                    autoClose: false,
+                    color: 'red',
+                });
+            }
+        } catch (e) {
+            console.info(e);
+            if (e instanceof LockedDeviceError) {
+                notifications.show({
+                    title: 'Error',
+                    message: e.message,
+                    autoClose: false,
+                    color: 'red',
+                });
+            } else if (e.message) {
+                notifications.show({
+                    title: 'Error',
+                    message: `Unable to generate new address: ${e.message}`,
+                    autoClose: false,
+                    color: 'red',
+                });
+            } else {
+                console.error(e);
+                notifications.show({
+                    title: 'Error',
+                    message: 'Unable to generate new address',
+                    autoClose: false,
+                    color: 'red',
+                });
+            }
+        } finally {
+            setEnableGenerate(true);
         }
-
-        setRawAddresses([...rawAddresses, rawAddress]);
-        setAddresses([...rawAddresses, rawAddress]);
     }
 
     const searchParams = useSearchParams();
@@ -361,7 +403,9 @@ export default function Dashboard(props) {
                 setAddresses,
                 setRawAddresses,
                 userSettings.getSetting('lastReceiveIndex'),
-            );
+            ).finally(() => {
+                setEnableGenerate(true);
+            });
         } else if (deviceType === 'demo') {
             demoLoadAddress(
                 bip32base,
@@ -415,10 +459,14 @@ export default function Dashboard(props) {
                             setAddresses={setAddresses}
                             setSelectedAddress={setSelectedAddress}
                             setActiveTab={setActiveTab}
+                            containerWidth={containerWidth}
+                            containerHeight={containerHeight}
                         />
 
                         <Center>
-                            <Button onClick={generateNewAddress}>Generate New Address</Button>
+                            <Button onClick={generateNewAddress} disabled={!enableGenerate}>
+                                Generate New Address
+                            </Button>
                         </Center>
                     </Tabs.Panel>
 

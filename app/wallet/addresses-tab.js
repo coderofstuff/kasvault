@@ -65,6 +65,12 @@ export default function AddressesTab(props) {
     return (
         <>
             <Box
+                className={props.selectedAddress ? styles.selectedAddress : null}
+                onClick={() => {
+                    if (props.selectedAddress) {
+                        props.setActiveTab('overview');
+                    }
+                }}
                 style={{
                     padding: 'var(--mantine-spacing-xs)',
                 }}
@@ -84,8 +90,10 @@ export default function AddressesTab(props) {
                                                         height: '1rem',
                                                         width: '1rem',
                                                     }}
-                                                    onClick={() => {
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
                                                         props.setSelectedAddress(null);
+                                                        return false;
                                                     }}
                                                 >
                                                     <IconCircleX

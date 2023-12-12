@@ -15,6 +15,11 @@
     text-decoration: none;
 }
 
+.selectedAddress:hover {
+    cursor: pointer;
+    color: var(--mantine-color-brand-0);
+}
+
 @media (max-width: 700px) {
     .medium {
         width: 500px;
