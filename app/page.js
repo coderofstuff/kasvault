@@ -61,15 +61,18 @@ async function getAppData(router, deviceType = 'usb') {
     }
 }
 
-const WHITELIST = ['kasvault.io', 'preview.kasvault.io'];
+const WHITELIST = [
+    'kasvault.io',
+    'preview.kasvault.io',
+    'privatepreview.kasvault.io',
+    'kasvault.vercel.app',
+];
 
 export default function Home() {
     const router = useRouter();
     const { width } = useViewportSize();
 
     let siteHostname = 'INVALID SITE';
-
-    console.info(globalThis.location.hostname);
 
     if (globalThis.location.hostname === 'localhost') {
         siteHostname = 'http://localhost:3000';
