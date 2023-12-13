@@ -12,6 +12,7 @@ import { IconUsb, IconBluetooth } from '@tabler/icons-react';
 import Image from 'next/image';
 import Header from '../components/header';
 import { useViewportSize } from '@mantine/hooks';
+import { useEffect, useState } from 'react';
 
 async function getAppData(router, deviceType = 'usb') {
     if (deviceType === 'demo') {
@@ -71,39 +72,42 @@ const WHITELIST = [
 export default function Home() {
     const router = useRouter();
     const { width } = useViewportSize();
+    const [siteHostname, setSiteHostname] = useState('INVALID SITE');
+    const [isShowDemo, setIsShowDemo] = useState(false);
 
-    let siteHostname = 'INVALID SITE';
-
-    if (globalThis.location.hostname === 'localhost') {
-        siteHostname = 'http://localhost:3000';
-    } else {
-        for (const currentWhitelist of WHITELIST) {
-            if (globalThis.location.hostname === currentWhitelist) {
-                siteHostname = `https://${globalThis.location.hostname}`;
-                break;
+    useEffect(() => {
+        if (window.location.hostname === 'localhost') {
+            setSiteHostname('http://localhost:3000');
+        } else {
+            for (const currentWhitelist of WHITELIST) {
+                if (window.location.hostname === currentWhitelist) {
+                    setSiteHostname(`https://${window.location.hostname}`);
+                    break;
+                }
             }
         }
-    }
+
+        setIsShowDemo(window.location.hostname !== 'kasvault.io');
+    });
 
     const smallStyles = width <= 48 * 16 ? { fontSize: '1rem' } : {};
 
-    const demoButton =
-        globalThis.location.hostname !== 'kasvault.io' ? (
-            <Stack
-                className={styles.card}
-                onClick={() => {
-                    getAppData(router, 'demo');
-                }}
-                align='center'
-            >
-                <h2>
-                    <Group style={smallStyles}>
-                        <IconBluetooth styles={smallStyles} /> Go to Demo Mode <span>-&gt;</span>
-                    </Group>
-                </h2>
-                <Text>(Replaced with bluetooth in the future)</Text>
-            </Stack>
-        ) : null;
+    const demoButton = isShowDemo ? (
+        <Stack
+            className={styles.card}
+            onClick={() => {
+                getAppData(router, 'demo');
+            }}
+            align='center'
+        >
+            <h2>
+                <Group style={smallStyles}>
+                    <IconBluetooth styles={smallStyles} /> Go to Demo Mode <span>-&gt;</span>
+                </Group>
+            </h2>
+            <Text>(Replaced with bluetooth in the future)</Text>
+        </Stack>
+    ) : null;
 
     return (
         <Stack className={styles.main}>
