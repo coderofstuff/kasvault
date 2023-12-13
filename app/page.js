@@ -61,29 +61,53 @@ async function getAppData(router, deviceType = 'usb') {
     }
 }
 
+const WHITELIST = ['kasvault.io', 'preview.kasvault.io'];
+
 export default function Home() {
     const router = useRouter();
     const { width } = useViewportSize();
 
-    // const whitelist = ["kasvault.io", "preview.kasvault.io"];
-    // let siteHostname = "kasvault.io";
-    let siteHostname = 'preview.kasvault.io';
+    let siteHostname = 'INVALID SITE';
 
-    // for (let i = 0; i < whitelist.length; i++) {
-    //   if (window.location.hostname === whitelist[i]) {
-    //     siteHostname = window.location.hostname;
-    //     break;
-    //   }
-    // }
+    console.info(globalThis.location.hostname);
+
+    if (globalThis.location.hostname === 'localhost') {
+        siteHostname = 'http://localhost:3000';
+    } else {
+        for (const currentWhitelist of WHITELIST) {
+            if (globalThis.location.hostname === currentWhitelist) {
+                siteHostname = `https://${globalThis.location.hostname}`;
+                break;
+            }
+        }
+    }
 
     const smallStyles = width <= 48 * 16 ? { fontSize: '1rem' } : {};
+
+    const demoButton =
+        globalThis.location.hostname !== 'kasvault.io' ? (
+            <Stack
+                className={styles.card}
+                onClick={() => {
+                    getAppData(router, 'demo');
+                }}
+                align='center'
+            >
+                <h2>
+                    <Group style={smallStyles}>
+                        <IconBluetooth styles={smallStyles} /> Go to Demo Mode <span>-&gt;</span>
+                    </Group>
+                </h2>
+                <Text>(Replaced with bluetooth in the future)</Text>
+            </Stack>
+        ) : null;
 
     return (
         <Stack className={styles.main}>
             <Header>
                 <div>
                     Verify URL is{width <= 465 ? <br /> : <>&nbsp;</>}
-                    <code>https://{siteHostname}</code>
+                    <code>{siteHostname}</code>
                 </div>
             </Header>
 
@@ -99,21 +123,7 @@ export default function Home() {
             </Group>
 
             <Group>
-                <Stack
-                    className={styles.card}
-                    onClick={() => {
-                        getAppData(router, 'demo');
-                    }}
-                    align='center'
-                >
-                    <h2>
-                        <Group style={smallStyles}>
-                            <IconBluetooth styles={smallStyles} /> Go to Demo Mode{' '}
-                            <span>-&gt;</span>
-                        </Group>
-                    </h2>
-                    <Text>(Replaced with bluetooth in the future)</Text>
-                </Stack>
+                {demoButton}
 
                 <Stack
                     className={styles.card}
@@ -128,7 +138,7 @@ export default function Home() {
                         </Group>
                     </h2>
 
-                    <Text>All Nano devices</Text>
+                    <Text>All Ledger devices</Text>
                 </Stack>
             </Group>
         </Stack>
