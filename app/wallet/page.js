@@ -17,7 +17,7 @@ import { delay } from '@/lib/util';
 
 import { useElementSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { eslint } from '@/next.config';
+import SettingsStore from '@/lib/settings-store';
 
 let loadingAddressBatch = false;
 let addressInitialized = false;
@@ -172,35 +172,6 @@ function getDemoXPub() {
         compressedPublicKey,
         chainCode,
     };
-}
-
-class SettingsStore {
-    constructor(storageKey) {
-        this.storageKey = `kasvault:${storageKey}`;
-        this.settings = localStorage.getItem(this.storageKey);
-
-        if (this.settings) {
-            this.settings = JSON.parse(this.settings);
-        } else {
-            this.settings = {
-                receiveAddresses: {},
-                lastReceiveIndex: 0,
-                changeAddresses: {},
-                lastChangeIndex: -1,
-                version: 0,
-            };
-            localStorage.setItem(this.storageKey, JSON.stringify(this.settings));
-        }
-    }
-
-    setSetting(property, value) {
-        this.settings[property] = value;
-        localStorage.setItem(this.storageKey, JSON.stringify(this.settings));
-    }
-
-    getSetting(property) {
-        return this.settings[property];
-    }
 }
 
 export default function Dashboard(props) {
