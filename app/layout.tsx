@@ -22,14 +22,13 @@ export default function RootLayout({ children }) {
             </head>
             <body className={inter.className}>
                 <MantineProvider
-                    withGlobalStyles
                     defaultColorScheme='dark'
                     theme={{
-                        colorScheme: 'dark',
                         fontFamily: 'Lato',
                         fontFamilyMonospace: 'Roboto Mono,Courier New,Courier,monospace',
                         colors: {
                             brand: [
+                                '#49EACB',
                                 '#49EACB',
                                 '#49EACB',
                                 '#49EACB',

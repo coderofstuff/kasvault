@@ -102,7 +102,7 @@ export default function Home() {
         >
             <h2>
                 <Group style={smallStyles}>
-                    <IconBluetooth styles={smallStyles} /> Go to Demo Mode <span>-&gt;</span>
+                    <IconBluetooth style={smallStyles} /> Go to Demo Mode <span>-&gt;</span>
                 </Group>
             </h2>
             <Text>(Replaced with bluetooth in the future)</Text>
