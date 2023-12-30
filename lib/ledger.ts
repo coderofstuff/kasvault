@@ -32,7 +32,11 @@ export async function fetchTransaction(transactionId) {
  * @param feeIncluded - whether or not fees are included in the amount passed
  * @returns [has_enough, utxos, fee, total]
  */
-export function selectUtxos(amount: number, utxosInput: any, feeIncluded: boolean = false): [boolean, Array<any>, number, number] {
+export function selectUtxos(
+    amount: number,
+    utxosInput: any,
+    feeIncluded: boolean = false,
+): [boolean, Array<any>, number, number] {
     // Fee does not have to be accurate. It just has to be over the absolute minimum.
     // https://kaspa-mdbook.aspectron.com/transactions/constraints/fees.html
     // Fee = (total mass) x (min_relay_tx_fee) / 1000
