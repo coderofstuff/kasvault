@@ -1,7 +1,7 @@
 'use client';
 
 import styles from './page.module.css';
-import { getAddress, fetchAddressDetails, initTransport } from '../../lib/ledger.js';
+import { getAddress, fetchAddressDetails, initTransport } from '@/lib/ledger';
 import { useState, useEffect } from 'react';
 import { Box, Stack, Tabs, Breadcrumbs, Anchor, Button, Center } from '@mantine/core';
 import Header from '../../components/header';

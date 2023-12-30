@@ -11,7 +11,7 @@ import {
     Box,
     Loader,
 } from '@mantine/core';
-import { fetchTransactions, fetchTransactionCount } from '../../lib/ledger.js';
+import { fetchTransactions, fetchTransactionCount } from '@/lib/ledger';
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 

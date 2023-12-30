@@ -1,4 +1,3 @@
-import Transport from '@ledgerhq/hw-transport';
 import TransportWebHID from '@ledgerhq/hw-transport-webhid';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
@@ -25,7 +24,7 @@ export async function fetchTransaction(transactionId) {
     return txData;
 }
 
-export function selectUtxos(amount, utxosInput, feeIncluded = false) {
+export function selectUtxos(amount: number, utxosInput: any, feeIncluded: boolean = false): [boolean, Array<any>, number, number] {
     // Fee does not have to be accurate. It just has to be over the absolute minimum.
     // https://kaspa-mdbook.aspectron.com/transactions/constraints/fees.html
     // Fee = (total mass) x (min_relay_tx_fee) / 1000
@@ -217,12 +216,12 @@ export const sendTransaction = async (signedTx) => {
 };
 
 export function createTransaction(
-    amount,
-    sendTo,
-    utxosInput,
-    derivationPath,
-    address,
-    feeIncluded,
+    amount: number,
+    sendTo: string,
+    utxosInput: any,
+    derivationPath: string,
+    changeAddress: string,
+    feeIncluded: boolean = false,
 ) {
     console.info('Amount:', amount);
     console.info('Send to:', sendTo);
@@ -242,7 +241,7 @@ export function createTransaction(
     const path = derivationPath.split('/');
     console.info('Split Path:', path);
 
-    const inputs = utxos.map(
+    const inputs: TransactionInput[] = utxos.map(
         (utxo) =>
             new TransactionInput({
                 value: utxo.amount,
@@ -253,7 +252,7 @@ export function createTransaction(
             }),
     );
 
-    const outputs = [];
+    const outputs: TransactionOutput[] = [];
 
     const targetAmount = feeIncluded ? Number((amount - fee).toFixed(8)) : amount;
 
@@ -266,12 +265,13 @@ export function createTransaction(
 
     const changeAmount = totalUtxoAmount - targetAmount - fee;
 
-    if (changeAmount > 0) {
+    // Any change smaller than 0.0001 is contributed to the fee to avoid dust
+    if (changeAmount >= 10000) {
         // Send remainder back to self:
         outputs.push(
             new TransactionOutput({
                 value: Math.round(changeAmount),
-                scriptPublicKey: addressToScriptPublicKey(address),
+                scriptPublicKey: addressToScriptPublicKey(changeAddress),
             }),
         );
     }

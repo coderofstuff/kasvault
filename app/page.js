@@ -1,7 +1,7 @@
 'use client';
 
 import styles from './page.module.css';
-import { initTransport, getAppAndVersion } from '../lib/ledger.js';
+import { initTransport, getAppAndVersion } from '../lib/ledger';
 import { useRouter } from 'next/navigation';
 import { notifications } from '@mantine/notifications';
 
