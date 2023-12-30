@@ -18,9 +18,9 @@ import { useSearchParams } from 'next/navigation';
 
 import { useState, useEffect } from 'react';
 import { createTransaction, sendAmount, selectUtxos } from '@/lib/ledger';
-import styles from './send-form.module.css';
 import AddressText from '@/components/address-text';
 import { useForm } from '@mantine/form';
+import { kasToSompi, sompiToKas } from '@/lib/kaspa-util';
 
 export default function SendForm(props) {
     const [confirming, setConfirming] = useState(false);
@@ -117,7 +117,7 @@ export default function SendForm(props) {
         } else if (deviceType == 'usb') {
             try {
                 const { tx } = createTransaction(
-                    Math.round(form.values.amount * 100000000),
+                    kasToSompi(form.values.amount),
                     form.values.sendTo,
                     props.addressContext.utxos,
                     props.addressContext.derivationPath,
@@ -150,30 +150,38 @@ export default function SendForm(props) {
             let calculatedFee = '-';
             if (deviceType === 'demo') {
                 calculatedFee =
-                    fee === '-' ? Math.round(Math.random() * 10000) / 100000000 : Number(fee);
+                    fee === '-' ? sompiToKas(Math.round(Math.random() * 10000)) : Number(fee);
                 setCanSendAmount(Number(amount) <= props.addressContext.balance - calculatedFee);
                 if (includeFeeInAmount) {
-                    setAmountDescription(`Amount after fee: ${amount - calculatedFee}`);
+                    const afterFeeDisplay = sompiToKas(kasToSompi(amount) - calculatedFee);
+                    setAmountDescription(`Amount after fee: ${afterFeeDisplay}`);
                 }
             } else if (deviceType === 'usb') {
-                const [hasEnough, selectedUtxos, feeCalcResult, total] = selectUtxos(
-                    amount * 100000000,
+                const [hasEnough, selectedUtxos, feeCalcResult, utxoTotalAmount] = selectUtxos(
+                    kasToSompi(amount),
                     props.addressContext.utxos,
                     includeFeeInAmount,
                 );
 
                 if (hasEnough) {
-                    const changeAmount = total - feeCalcResult - amount;
+                    let changeAmount = utxoTotalAmount - kasToSompi(amount);
+                    if (!includeFeeInAmount) {
+                        changeAmount -= feeCalcResult;
+                    }
+
                     let expectedFee = feeCalcResult;
                     // The change is added to the fee if it's less than 0.0001 KAS
+                    console.info('changeAmount', changeAmount);
                     if (changeAmount < 10000) {
+                        console.info(`Adding dust change ${changeAmount} sompi to fee`);
                         expectedFee += changeAmount;
                     }
 
-                    calculatedFee = expectedFee / 100000000;
+                    calculatedFee = sompiToKas(expectedFee);
+                    const afterFeeDisplay = sompiToKas(kasToSompi(amount) - expectedFee);
                     setCanSendAmount(true);
                     if (includeFeeInAmount) {
-                        setAmountDescription(`Amount after fee: ${amount - calculatedFee}`);
+                        setAmountDescription(`Amount after fee: ${afterFeeDisplay}`);
                     }
                 } else {
                     setCanSendAmount(false);
@@ -196,7 +204,7 @@ export default function SendForm(props) {
         }, 0);
 
         form.setValues({
-            amount: Number((total / 100000000).toFixed(8)),
+            amount: sompiToKas(total),
             includeFeeInAmount: true,
         });
     };

@@ -161,3 +161,23 @@ export function addressToScriptPublicKey(address: string): string {
             throw new Error('Address could not be translated to script public key');
     }
 }
+
+export function sompiToKas(amount: number) {
+    const amountStr = "00000000" + amount;
+    return Number(amountStr.slice(0, -8) + "." + amountStr.slice(-8));
+}
+
+export function kasToSompi(amount: number) {
+    const amountStr = String(amount);
+    const parts = amountStr.split(".");
+
+    if (parts.length === 1) {
+        return Number(amountStr + "00000000");
+    } else if (parts.length === 2) {
+        const [left, right] = parts;
+        const rightStr = right + "00000000";
+        return Number(left + rightStr.slice(0, 8));
+    } else {
+        throw new Error("Invalid amount");
+    }
+}

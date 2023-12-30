@@ -24,6 +24,14 @@ export async function fetchTransaction(transactionId) {
     return txData;
 }
 
+/**
+ * Selects the UTXOs to fulfill the amount requested
+ *
+ * @param amount - the amount to select for, in SOMPI
+ * @param utxosInput - the utxos array to select from
+ * @param feeIncluded - whether or not fees are included in the amount passed
+ * @returns [has_enough, utxos, fee, total]
+ */
 export function selectUtxos(amount: number, utxosInput: any, feeIncluded: boolean = false): [boolean, Array<any>, number, number] {
     // Fee does not have to be accurate. It just has to be over the absolute minimum.
     // https://kaspa-mdbook.aspectron.com/transactions/constraints/fees.html
@@ -274,6 +282,8 @@ export function createTransaction(
                 scriptPublicKey: addressToScriptPublicKey(changeAddress),
             }),
         );
+    } else {
+        console.info(`Adding dust change ${changeAmount} sompi to fee`);
     }
 
     const tx = new Transaction({
