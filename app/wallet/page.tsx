@@ -180,8 +180,8 @@ export default function Dashboard(props) {
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [activeTab, setActiveTab] = useState('addresses');
     const [isTransportInitialized, setTransportInitialized] = useState(false);
-    const [bip32base, setBIP32Base] = useState();
-    const [userSettings, setUserSettings] = useState();
+    const [bip32base, setBIP32Base] = useState<KaspaBIP32>();
+    const [userSettings, setUserSettings] = useState<SettingsStore>();
     const [enableGenerate, setEnableGenerate] = useState(false);
 
     const { ref: containerRef, width: containerWidth, height: containerHeight } = useElementSize();
