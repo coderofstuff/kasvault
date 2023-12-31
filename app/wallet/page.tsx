@@ -402,6 +402,7 @@ export default function Dashboard(props) {
                             setAddresses={setAddresses}
                             containerWidth={containerWidth}
                             containerHeight={containerHeight}
+                            deviceType={deviceType}
                         />
                     </Tabs.Panel>
 

@@ -168,7 +168,9 @@ export default function OverviewTab(props) {
             );
             break;
         case 'Message':
-            signSection = <MessageForm selectedAddress={selectedAddress} />;
+            signSection = (
+                <MessageForm selectedAddress={selectedAddress} deviceType={props.deviceType} />
+            );
             break;
         default:
             break;

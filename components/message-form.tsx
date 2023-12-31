@@ -41,7 +41,12 @@ export default function MessageForm(props) {
 
         try {
             const path = props.selectedAddress.derivationPath.split('/');
-            const result = await signMessage(form.values.message, Number(path[3]), Number(path[4]), props.deviceType);
+            const result = await signMessage(
+                form.values.message,
+                Number(path[3]),
+                Number(path[4]),
+                props.deviceType,
+            );
             setSignature(result.signature);
 
             open();
