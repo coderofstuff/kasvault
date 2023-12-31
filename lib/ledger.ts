@@ -18,7 +18,7 @@ let transportState = {
     type: null,
 };
 
-export async function fetchTransaction(transactionId) {
+export async function fetchTransaction(transactionId: string) {
     const { data: txData } = await axios.get(`https://api.kaspa.org/transactions/${transactionId}`);
 
     return txData;
