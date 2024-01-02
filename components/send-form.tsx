@@ -155,11 +155,11 @@ export default function SendForm(props) {
                     setAmountDescription(`Amount after fee: ${afterFeeDisplay}`);
                 }
             } else if (deviceType === 'usb') {
-                const [hasEnough, _selectedUtxos, feeCalcResult, utxoTotalAmount] = selectUtxos(
-                    kasToSompi(amount),
-                    props.addressContext.utxos,
-                    includeFeeInAmount,
-                );
+                const {
+                    hasEnough,
+                    fee: feeCalcResult,
+                    total: utxoTotalAmount,
+                } = selectUtxos(kasToSompi(amount), props.addressContext.utxos, includeFeeInAmount);
 
                 if (hasEnough) {
                     let changeAmount = utxoTotalAmount - kasToSompi(amount);

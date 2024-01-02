@@ -24,6 +24,13 @@ export async function fetchTransaction(transactionId: string) {
     return txData;
 }
 
+export type UtxoSelectionResult = {
+    hasEnough: boolean;
+    utxos: Array<any>;
+    fee: number;
+    total: number;
+};
+
 /**
  * Selects the UTXOs to fulfill the amount requested
  *
@@ -34,9 +41,9 @@ export async function fetchTransaction(transactionId: string) {
  */
 export function selectUtxos(
     amount: number,
-    utxosInput: any,
+    utxosInput: UtxoInfo[],
     feeIncluded: boolean = false,
-): [boolean, Array<any>, number, number] {
+): UtxoSelectionResult {
     // Fee does not have to be accurate. It just has to be over the absolute minimum.
     // https://kaspa-mdbook.aspectron.com/transactions/constraints/fees.html
     // Fee = (total mass) x (min_relay_tx_fee) / 1000
@@ -71,7 +78,7 @@ export function selectUtxos(
 
         selected.push(utxo);
 
-        const targetAmount = feeIncluded ? Number((amount - fee).toFixed(8)) : amount;
+        const targetAmount = feeIncluded ? amount - fee : amount;
         console.info({
             targetAmount,
             amount,
@@ -79,15 +86,17 @@ export function selectUtxos(
             total,
         });
 
-        if (total >= targetAmount + fee) {
+        const totalSpend = targetAmount + fee;
+        // If we have change, we want to try to use at least 2 UTXOs
+        if (total == totalSpend || (total > totalSpend && selected.length > 1)) {
             // We have enough
             break;
         }
     }
 
     // [has_enough, utxos, fee, total]
-    const targetAmount = feeIncluded ? Number((amount - fee).toFixed(8)) : amount;
-    return [total >= targetAmount + fee, selected, fee, total];
+    const targetAmount = feeIncluded ? amount - fee : amount;
+    return { hasEnough: total >= targetAmount + fee, utxos: selected, fee, total };
 }
 
 export async function initTransport(type = 'usb') {
@@ -114,6 +123,12 @@ export async function fetchTransactionCount(address) {
     return txCount.total || 0;
 }
 
+export type UtxoInfo = {
+    prevTxId: string;
+    outpointIndex: number;
+    amount: number;
+};
+
 export async function fetchAddressDetails(address, derivationPath) {
     const { data: balanceData } = await axios.get(
         `https://api.kaspa.org/addresses/${address}/balance`,
@@ -122,7 +137,7 @@ export async function fetchAddressDetails(address, derivationPath) {
 
     // UTXOs sorted by decreasing amount. Using the biggest UTXOs first minimizes number of utxos needed
     // in a transaction
-    const utxos = utxoData
+    const utxos: UtxoInfo[] = utxoData
         .map((utxo) => {
             return {
                 prevTxId: utxo.outpoint.transactionId,
@@ -130,7 +145,7 @@ export async function fetchAddressDetails(address, derivationPath) {
                 amount: Number(utxo.utxoEntry.amount),
             };
         })
-        .sort((a, b) => b.amount - a.amount);
+        .sort((a: UtxoInfo, b: UtxoInfo) => b.amount - a.amount);
 
     const path = derivationPath.split('/');
 
@@ -240,7 +255,12 @@ export function createTransaction(
     console.info('UTXOs:', utxosInput);
     console.info('Derivation Path:', derivationPath);
 
-    const [hasEnough, utxos, fee, totalUtxoAmount] = selectUtxos(amount, utxosInput, feeIncluded);
+    const {
+        hasEnough,
+        utxos,
+        fee,
+        total: totalUtxoAmount,
+    } = selectUtxos(amount, utxosInput, feeIncluded);
 
     console.info('hasEnough', hasEnough);
     console.info(utxos);
