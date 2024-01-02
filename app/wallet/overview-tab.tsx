@@ -78,7 +78,8 @@ export default function OverviewTab(props) {
                 console.error(e);
                 notifications.show({
                     title: 'Address not verified',
-                    message: 'Failed to verify address',
+                    message: 'Failed to verify address on the device',
+                    color: 'red',
                 });
             }
 
@@ -167,7 +168,9 @@ export default function OverviewTab(props) {
             );
             break;
         case 'Message':
-            signSection = <MessageForm selectedAddress={selectedAddress} />;
+            signSection = (
+                <MessageForm selectedAddress={selectedAddress} deviceType={props.deviceType} />
+            );
             break;
         default:
             break;

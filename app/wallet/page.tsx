@@ -1,9 +1,9 @@
 'use client';
 
 import styles from './page.module.css';
-import { getAddress, fetchAddressDetails, initTransport } from '../../lib/ledger.js';
+import { getAddress, fetchAddressDetails, initTransport } from '@/lib/ledger';
 import { useState, useEffect } from 'react';
-import { Box, Stack, Tabs, Breadcrumbs, Anchor, Button, Center } from '@mantine/core';
+import { Stack, Tabs, Breadcrumbs, Anchor, Button, Center } from '@mantine/core';
 import Header from '../../components/header';
 import AddressesTab from './addresses-tab';
 import OverviewTab from './overview-tab';
@@ -17,28 +17,10 @@ import { delay } from '@/lib/util';
 
 import { useElementSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { eslint } from '@/next.config';
+import SettingsStore from '@/lib/settings-store';
 
 let loadingAddressBatch = false;
 let addressInitialized = false;
-
-function loadAddresses(bip32, addressType = 0, from = 0, to = from + 10) {
-    const addresses = [];
-
-    for (let addressIndex = from; addressIndex < to; addressIndex++) {
-        const derivationPath = `44'/111111'/0'/${addressType}/${addressIndex}`;
-        const address = bip32.getAddress(addressType, addressIndex);
-
-        addresses.push({
-            derivationPath,
-            address,
-            addressIndex,
-            addressType,
-        });
-    }
-
-    return addresses;
-}
 
 const addressFilter = (lastReceiveIndex) => {
     return (addressData, index) => {
@@ -174,43 +156,14 @@ function getDemoXPub() {
     };
 }
 
-class SettingsStore {
-    constructor(storageKey) {
-        this.storageKey = `kasvault:${storageKey}`;
-        this.settings = localStorage.getItem(this.storageKey);
-
-        if (this.settings) {
-            this.settings = JSON.parse(this.settings);
-        } else {
-            this.settings = {
-                receiveAddresses: {},
-                lastReceiveIndex: 0,
-                changeAddresses: {},
-                lastChangeIndex: -1,
-                version: 0,
-            };
-            localStorage.setItem(this.storageKey, JSON.stringify(this.settings));
-        }
-    }
-
-    setSetting(property, value) {
-        this.settings[property] = value;
-        localStorage.setItem(this.storageKey, JSON.stringify(this.settings));
-    }
-
-    getSetting(property) {
-        return this.settings[property];
-    }
-}
-
-export default function Dashboard(props) {
+export default function Dashboard() {
     const [addresses, setAddresses] = useState([]);
     const [rawAddresses, setRawAddresses] = useState([]);
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [activeTab, setActiveTab] = useState('addresses');
     const [isTransportInitialized, setTransportInitialized] = useState(false);
-    const [bip32base, setBIP32Base] = useState();
-    const [userSettings, setUserSettings] = useState();
+    const [bip32base, setBIP32Base] = useState<KaspaBIP32>();
+    const [userSettings, setUserSettings] = useState<SettingsStore>();
     const [enableGenerate, setEnableGenerate] = useState(false);
 
     const { ref: containerRef, width: containerWidth, height: containerHeight } = useElementSize();
@@ -296,14 +249,14 @@ export default function Dashboard(props) {
 
     useEffect(() => {
         if (isTransportInitialized) {
-            return;
+            return () => {};
         }
 
         if (deviceType === 'demo') {
             setTransportInitialized(true);
             const xpub = getDemoXPub();
             setBIP32Base(new KaspaBIP32(xpub.compressedPublicKey, xpub.chainCode));
-            return;
+            return () => {};
         }
 
         let unloaded = false;
@@ -317,6 +270,8 @@ export default function Dashboard(props) {
                         setBIP32Base(new KaspaBIP32(xpub.compressedPublicKey, xpub.chainCode)),
                     );
                 }
+
+                return null;
             })
             .catch((e) => {
                 notifications.show({
@@ -431,6 +386,7 @@ export default function Dashboard(props) {
                             setAddresses={setAddresses}
                             containerWidth={containerWidth}
                             containerHeight={containerHeight}
+                            deviceType={deviceType}
                         />
                     </Tabs.Panel>
 

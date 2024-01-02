@@ -18,14 +18,14 @@ import { useSearchParams } from 'next/navigation';
 
 import { useState, useEffect } from 'react';
 import { createTransaction, sendAmount, selectUtxos } from '@/lib/ledger';
-import styles from './send-form.module.css';
 import AddressText from '@/components/address-text';
 import { useForm } from '@mantine/form';
+import { kasToSompi, sompiToKas } from '@/lib/kaspa-util';
 
 export default function SendForm(props) {
     const [confirming, setConfirming] = useState(false);
-    const [fee, setFee] = useState('-');
-    const [amountDescription, setAmountDescription] = useState();
+    const [fee, setFee] = useState<string | number>('-');
+    const [amountDescription, setAmountDescription] = useState<string>();
 
     const [canSendAmount, setCanSendAmount] = useState(false);
 
@@ -37,7 +37,7 @@ export default function SendForm(props) {
 
     const form = useForm({
         initialValues: {
-            amount: '',
+            amount: undefined,
             sendTo: '',
             includeFeeInAmount: false,
             sentAmount: '',
@@ -55,20 +55,18 @@ export default function SendForm(props) {
         // Reset setup
         setConfirming(false);
         setFee('-');
-        const baseValues = { amount: '', sendTo: '', includeFeeInAmount: false };
+        let baseValues = { amount: '', sendTo: '', includeFeeInAmount: false };
 
         if (resetAllValues) {
-            baseValues.sentTo = '';
-            baseValues.sentTxId = '';
-            baseValues.sentAmount = '';
+            form.setValues({ sentTo: '', sentTxId: '', sentAmount: '', ...baseValues });
+        } else {
+            form.setValues(baseValues);
         }
-
-        form.setValues(baseValues);
     };
 
     const cleanupOnSuccess = (transactionId) => {
         const targetAmount = form.values.includeFeeInAmount
-            ? Number((form.values.amount - fee).toFixed(8))
+            ? (Number(form.values.amount) - Number(fee)).toFixed(8)
             : form.values.amount;
 
         form.setValues({
@@ -117,7 +115,7 @@ export default function SendForm(props) {
         } else if (deviceType == 'usb') {
             try {
                 const { tx } = createTransaction(
-                    Math.round(form.values.amount * 100000000),
+                    kasToSompi(Number(form.values.amount)),
                     form.values.sendTo,
                     props.addressContext.utxos,
                     props.addressContext.derivationPath,
@@ -147,26 +145,41 @@ export default function SendForm(props) {
         setAmountDescription('');
 
         if (amount && sendTo) {
-            let calculatedFee = '-';
+            let calculatedFee: string | number = '-';
             if (deviceType === 'demo') {
                 calculatedFee =
-                    fee === '-' ? Math.round(Math.random() * 10000) / 100000000 : Number(fee);
+                    fee === '-' ? sompiToKas(Math.round(Math.random() * 10000)) : Number(fee);
                 setCanSendAmount(Number(amount) <= props.addressContext.balance - calculatedFee);
                 if (includeFeeInAmount) {
-                    setAmountDescription(`Amount after fee: ${amount - calculatedFee}`);
+                    const afterFeeDisplay = sompiToKas(kasToSompi(amount) - calculatedFee);
+                    setAmountDescription(`Amount after fee: ${afterFeeDisplay}`);
                 }
             } else if (deviceType === 'usb') {
-                const [hasEnough, selectedUtxos, feeCalcResult] = selectUtxos(
-                    amount * 100000000,
-                    props.addressContext.utxos,
-                    includeFeeInAmount,
-                );
+                const {
+                    hasEnough,
+                    fee: feeCalcResult,
+                    total: utxoTotalAmount,
+                } = selectUtxos(kasToSompi(amount), props.addressContext.utxos, includeFeeInAmount);
 
                 if (hasEnough) {
-                    calculatedFee = feeCalcResult / 100000000;
+                    let changeAmount = utxoTotalAmount - kasToSompi(amount);
+                    if (!includeFeeInAmount) {
+                        changeAmount -= feeCalcResult;
+                    }
+
+                    let expectedFee = feeCalcResult;
+                    // The change is added to the fee if it's less than 0.0001 KAS
+                    console.info('changeAmount', changeAmount);
+                    if (changeAmount < 10000) {
+                        console.info(`Adding dust change ${changeAmount} sompi to fee`);
+                        expectedFee += changeAmount;
+                    }
+
+                    calculatedFee = sompiToKas(expectedFee);
+                    const afterFeeDisplay = sompiToKas(kasToSompi(amount) - expectedFee);
                     setCanSendAmount(true);
                     if (includeFeeInAmount) {
-                        setAmountDescription(`Amount after fee: ${amount - calculatedFee}`);
+                        setAmountDescription(`Amount after fee: ${afterFeeDisplay}`);
                     }
                 } else {
                     setCanSendAmount(false);
@@ -189,7 +202,7 @@ export default function SendForm(props) {
         }, 0);
 
         form.setValues({
-            amount: Number((total / 100000000).toFixed(8)),
+            amount: sompiToKas(total),
             includeFeeInAmount: true,
         });
     };
@@ -201,7 +214,7 @@ export default function SendForm(props) {
                     label='Send to Address'
                     placeholder='Address'
                     {...form.getInputProps('sendTo')}
-                    disabled={form.getInputProps('sendTo').disabled || confirming}
+                    disabled={confirming}
                     required
                 />
 
@@ -228,7 +241,7 @@ export default function SendForm(props) {
                 <Checkbox
                     {...form.getInputProps('includeFeeInAmount', { type: 'checkbox' })}
                     label='Include fee in amount'
-                    disabled={confirming || form.getInputProps('includeFeeInAmount').disabled}
+                    disabled={confirming}
                 />
 
                 <Group justify='space-between'>
@@ -252,7 +265,7 @@ export default function SendForm(props) {
                 size={viewportWidth > 700 ? 'auto' : 'md'}
             >
                 <Stack align='center'>
-                    <Text size='lg' align='center' c='brand'>
+                    <Text size='lg' c='brand'>
                         Sent!
                     </Text>
 
@@ -262,23 +275,21 @@ export default function SendForm(props) {
                         href={`https://explorer.kaspa.org/txs/${form.values.sentTxId}`}
                         target='_blank'
                         c='brand'
-                        align='center'
                         w={'calc(var(--modal-size) - 6rem)'}
                         style={{ overflowWrap: 'break-word' }}
                     >
                         {form.values.sentTxId}
                     </Anchor>
 
-                    <Text component='h2' align='center' fw={600}>
+                    <Text component='h2' fw={600}>
                         {form.values.sentAmount} KAS
                     </Text>
 
-                    <Text align='center'>sent to</Text>
+                    <Text>sent to</Text>
 
                     <Text
                         w={'calc(var(--modal-size) - 6rem)'}
                         style={{ overflowWrap: 'break-word' }}
-                        align='center'
                     >
                         <AddressText address={form.values.sentTo} />
                     </Text>

@@ -1,7 +1,7 @@
 'use client';
 
 import styles from './page.module.css';
-import { initTransport, getAppAndVersion } from '../lib/ledger.js';
+import { initTransport, getAppAndVersion } from '../lib/ledger';
 import { useRouter } from 'next/navigation';
 import { notifications } from '@mantine/notifications';
 
@@ -102,7 +102,7 @@ export default function Home() {
         >
             <h2>
                 <Group style={smallStyles}>
-                    <IconBluetooth styles={smallStyles} /> Go to Demo Mode <span>-&gt;</span>
+                    <IconBluetooth style={smallStyles} /> Go to Demo Mode <span>-&gt;</span>
                 </Group>
             </h2>
             <Text>(Replaced with bluetooth in the future)</Text>

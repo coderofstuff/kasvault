@@ -10,12 +10,12 @@
 /***
  * Charset containing the 32 symbols used in the base32 encoding.
  */
-var CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+const CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
 
 /***
  * Inverted index mapping each symbol into its index within the charset.
  */
-var CHARSET_INVERSE_INDEX = {
+const CHARSET_INVERSE_INDEX = {
     q: 0,
     p: 1,
     z: 2,
@@ -55,7 +55,7 @@ var CHARSET_INVERSE_INDEX = {
  *
  * @param {Array} data Array of integers between 0 and 31 inclusive.
  */
-function encode(data) {
+export function encode(data) {
     if (!(data instanceof Array)) {
         throw new Error('Must be Array');
     }
@@ -75,7 +75,7 @@ function encode(data) {
  *
  * @param {string} base32
  */
-function decode(base32) {
+export function decode(base32) {
     if (typeof base32 !== 'string') {
         throw new Error('Must be base32-encoded string');
     }
@@ -90,7 +90,9 @@ function decode(base32) {
     return data;
 }
 
-module.exports = {
-    encode: encode,
-    decode: decode,
+const base32 = {
+    encode,
+    decode,
 };
+
+export default base32;

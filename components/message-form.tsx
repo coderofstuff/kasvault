@@ -8,7 +8,7 @@ import MessageModal from './message-modal';
 import { notifications } from '@mantine/notifications';
 
 export default function MessageForm(props) {
-    const [signature, setSignature] = useState();
+    const [signature, setSignature] = useState('');
     const [opened, { open, close }] = useDisclosure(false);
 
     const form = useForm({
@@ -41,7 +41,12 @@ export default function MessageForm(props) {
 
         try {
             const path = props.selectedAddress.derivationPath.split('/');
-            const result = await signMessage(form.values.message, Number(path[3]), Number(path[4]));
+            const result = await signMessage(
+                form.values.message,
+                Number(path[3]),
+                Number(path[4]),
+                props.deviceType,
+            );
             setSignature(result.signature);
 
             open();
