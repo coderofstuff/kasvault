@@ -22,6 +22,7 @@ import { fetchAddressDetails, fetchTransaction, getAddress } from '@/lib/ledger'
 import { delay } from '@/lib/util';
 
 import styles from './overview-tab.module.css';
+import { sompiToKas } from '@/lib/kaspa-util';
 
 export default function OverviewTab(props) {
     const groupRef = useRef(null);
@@ -127,7 +128,7 @@ export default function OverviewTab(props) {
                 selectedAddress.derivationPath,
             );
 
-            selectedAddress.balance = addressDetails.balance / 100000000;
+            selectedAddress.balance = sompiToKas(addressDetails.balance);
             selectedAddress.utxos = addressDetails.utxos;
             selectedAddress.newTransactions++;
             // selectedAddress.txCount = addressDetails.txCount;

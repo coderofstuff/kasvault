@@ -181,3 +181,5 @@ export function kasToSompi(amount: number) {
         throw new Error('Invalid amount');
     }
 }
+
+export const NETWORK_UTXO_LIMIT = 84;
