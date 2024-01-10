@@ -20,7 +20,7 @@ import { useState, useEffect } from 'react';
 import { createTransaction, sendAmount, selectUtxos } from '@/lib/ledger';
 import AddressText from '@/components/address-text';
 import { useForm } from '@mantine/form';
-import { kasToSompi, sompiToKas } from '@/lib/kaspa-util';
+import { kasToSompi, sompiToKas, NETWORK_UTXO_LIMIT } from '@/lib/kaspa-util';
 
 export default function SendForm(props) {
     const [confirming, setConfirming] = useState(false);
@@ -128,12 +128,30 @@ export default function SendForm(props) {
                 cleanupOnSuccess(transactionId);
             } catch (e) {
                 console.error(e);
-                notifications.show({
-                    title: 'Error',
-                    color: 'red',
-                    message: e.message,
-                    loading: false,
-                });
+
+                if (e.statusCode == 0xb005 && props.addressContext.utxos.length > 15) {
+                    // This is probably a Nano S
+                    const maxCompoundableAmount = sompiToKas(
+                        props.addressContext.utxos.slice(0, 15).reduce((acc, utxo) => {
+                            return acc + utxo.amount;
+                        }, 0),
+                    );
+                    notifications.show({
+                        title: 'Error',
+                        color: 'red',
+                        message: `You have too many UTXOs to send this amount. Please compound first by sending KAS to your address. Maximum sendable without compounding (including fee): ${maxCompoundableAmount}`,
+                        autoClose: false,
+                        loading: false,
+                    });
+                } else {
+                    notifications.show({
+                        title: 'Error',
+                        color: 'red',
+                        message: e.message,
+                        loading: false,
+                    });
+                }
+
                 setConfirming(false);
             } finally {
                 notifications.hide(notifId);
@@ -146,44 +164,50 @@ export default function SendForm(props) {
 
         if (amount && sendTo) {
             let calculatedFee: string | number = '-';
-            if (deviceType === 'demo') {
-                calculatedFee =
-                    fee === '-' ? sompiToKas(Math.round(Math.random() * 10000)) : Number(fee);
-                setCanSendAmount(Number(amount) <= props.addressContext.balance - calculatedFee);
+
+            const {
+                hasEnough,
+                utxos,
+                fee: feeCalcResult,
+                total: utxoTotalAmount,
+            } = selectUtxos(kasToSompi(amount), props.addressContext.utxos, includeFeeInAmount);
+
+            if (utxos.length > NETWORK_UTXO_LIMIT) {
+                const maxCompoundableAmount = sompiToKas(
+                    utxos.slice(0, NETWORK_UTXO_LIMIT).reduce((acc, utxo) => {
+                        return acc + utxo.amount;
+                    }, 0),
+                );
+                notifications.show({
+                    title: 'Error',
+                    color: 'red',
+                    message: `You have too many UTXOs to send this amount. Please compound first by sending KAS to your address. Maximum sendable without compounding (including fee): ${maxCompoundableAmount}`,
+                    autoClose: false,
+                    loading: false,
+                });
+                setCanSendAmount(false);
+            } else if (hasEnough) {
+                let changeAmount = utxoTotalAmount - kasToSompi(amount);
+                if (!includeFeeInAmount) {
+                    changeAmount -= feeCalcResult;
+                }
+
+                let expectedFee = feeCalcResult;
+                // The change is added to the fee if it's less than 0.0001 KAS
+                console.info('changeAmount', changeAmount);
+                if (changeAmount < 10000) {
+                    console.info(`Adding dust change ${changeAmount} sompi to fee`);
+                    expectedFee += changeAmount;
+                }
+
+                calculatedFee = sompiToKas(expectedFee);
+                const afterFeeDisplay = sompiToKas(kasToSompi(amount) - expectedFee);
+                setCanSendAmount(true);
                 if (includeFeeInAmount) {
-                    const afterFeeDisplay = sompiToKas(kasToSompi(amount) - calculatedFee);
                     setAmountDescription(`Amount after fee: ${afterFeeDisplay}`);
                 }
-            } else if (deviceType === 'usb') {
-                const {
-                    hasEnough,
-                    fee: feeCalcResult,
-                    total: utxoTotalAmount,
-                } = selectUtxos(kasToSompi(amount), props.addressContext.utxos, includeFeeInAmount);
-
-                if (hasEnough) {
-                    let changeAmount = utxoTotalAmount - kasToSompi(amount);
-                    if (!includeFeeInAmount) {
-                        changeAmount -= feeCalcResult;
-                    }
-
-                    let expectedFee = feeCalcResult;
-                    // The change is added to the fee if it's less than 0.0001 KAS
-                    console.info('changeAmount', changeAmount);
-                    if (changeAmount < 10000) {
-                        console.info(`Adding dust change ${changeAmount} sompi to fee`);
-                        expectedFee += changeAmount;
-                    }
-
-                    calculatedFee = sompiToKas(expectedFee);
-                    const afterFeeDisplay = sompiToKas(kasToSompi(amount) - expectedFee);
-                    setCanSendAmount(true);
-                    if (includeFeeInAmount) {
-                        setAmountDescription(`Amount after fee: ${afterFeeDisplay}`);
-                    }
-                } else {
-                    setCanSendAmount(false);
-                }
+            } else {
+                setCanSendAmount(false);
             }
 
             if (fee === '-' || fee !== calculatedFee) {

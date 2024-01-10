@@ -18,6 +18,7 @@ import { delay } from '@/lib/util';
 import { useElementSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import SettingsStore from '@/lib/settings-store';
+import { kasToSompi, sompiToKas, NETWORK_UTXO_LIMIT } from '@/lib/kaspa-util';
 
 let loadingAddressBatch = false;
 let addressInitialized = false;
@@ -36,7 +37,7 @@ function loadAddressDetails(rawAddress) {
     const fetchAddressPromise = fetchAddressDetails(rawAddress.address, rawAddress.derivationPath);
 
     return fetchAddressPromise.then((addressDetails) => {
-        rawAddress.balance = addressDetails.balance / 100000000;
+        rawAddress.balance = sompiToKas(addressDetails.balance);
         rawAddress.utxos = addressDetails.utxos;
         // rawAddress.txCount = addressDetails.txCount;
         rawAddress.loading = false;
@@ -111,14 +112,29 @@ async function demoLoadAddress(bip32, setAddresses, setRawAddresses, lastReceive
     const demoAddresses = [];
 
     for (let i = 0; i <= lastReceiveIndex; i++) {
+        const balance = Math.round(Math.random() * 10000);
         const currAddress = {
             key: i,
             address: bip32.getAddress(0, i),
-            balance: Math.round(Math.random() * 10000),
+            balance,
             derivationPath: `44'/111111'/0'/0/${i}`,
             utxos: [],
             loading: true,
         };
+
+        currAddress.utxos.push({
+            prevTxId: 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+            outpointIndex: 0,
+            amount: kasToSompi(balance - (NETWORK_UTXO_LIMIT - 1)),
+        });
+
+        for (let j = 0; j < NETWORK_UTXO_LIMIT - 1; j++) {
+            currAddress.utxos.push({
+                prevTxId: 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+                outpointIndex: 0,
+                amount: kasToSompi(1),
+            });
+        }
 
         demoAddresses.push(currAddress);
 
