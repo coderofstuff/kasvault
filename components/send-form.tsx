@@ -128,12 +128,30 @@ export default function SendForm(props) {
                 cleanupOnSuccess(transactionId);
             } catch (e) {
                 console.error(e);
-                notifications.show({
-                    title: 'Error',
-                    color: 'red',
-                    message: e.message,
-                    loading: false,
-                });
+
+                if (e.statusCode == 0xb005 && props.addressContext.utxos.length > 15) {
+                    // This is probably a Nano S
+                    const maxCompoundableAmount = sompiToKas(
+                        props.addressContext.utxos.slice(0, 15).reduce((acc, utxo) => {
+                            return acc + utxo.amount;
+                        }, 0),
+                    );
+                    notifications.show({
+                        title: 'Error',
+                        color: 'red',
+                        message: `You have too many UTXOs to send this amount. Please compound first by sending KAS to your address. Maximum sendable without compounding (including fee): ${maxCompoundableAmount}`,
+                        autoClose: false,
+                        loading: false,
+                    });
+                } else {
+                    notifications.show({
+                        title: 'Error',
+                        color: 'red',
+                        message: e.message,
+                        loading: false,
+                    });
+                }
+
                 setConfirming(false);
             } finally {
                 notifications.hide(notifId);
