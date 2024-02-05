@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
     title: 'KasVault',
-    description: 'The hardware-wallet focused Kaspa wallet',
+    description: 'The frontend interface for your Ledger device',
 };
 
 export default function RootLayout({ children }) {
