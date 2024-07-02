@@ -36,12 +36,14 @@ export type UtxoSelectionResult = {
  *
  * @param amount - the amount to select for, in SOMPI
  * @param utxosInput - the utxos array to select from
+ * @param priorityFee - additional fee, for higher priority
  * @param feeIncluded - whether or not fees are included in the amount passed
  * @returns [has_enough, utxos, fee, total]
  */
 export function selectUtxos(
     amount: number,
     utxosInput: UtxoInfo[],
+    priorityFee: number,
     feeIncluded: boolean = false,
 ): UtxoSelectionResult {
     // Fee does not have to be accurate. It just has to be over the absolute minimum.
@@ -66,7 +68,7 @@ export function selectUtxos(
     // 2. The signature script len is 66 (always true schnorr addresses)
     // 3. Payload is zero hash payload
     // 4. We're at mainnet
-    let fee = 239 + 690;
+    let fee = priorityFee + 239 + 690;
     let total = 0;
 
     const selected = [];
@@ -248,9 +250,11 @@ export function createTransaction(
     utxosInput: any,
     derivationPath: string,
     changeAddress: string,
+    priorityFee: number,
     feeIncluded: boolean = false,
 ) {
     console.info('Amount:', amount);
+    console.info('Priority Fee:', priorityFee);
     console.info('Send to:', sendTo);
     console.info('UTXOs:', utxosInput);
     console.info('Derivation Path:', derivationPath);
@@ -260,7 +264,7 @@ export function createTransaction(
         utxos,
         fee,
         total: totalUtxoAmount,
-    } = selectUtxos(amount, utxosInput, feeIncluded);
+    } = selectUtxos(amount, utxosInput, priorityFee, feeIncluded);
 
     console.info('hasEnough', hasEnough);
     console.info(utxos);
