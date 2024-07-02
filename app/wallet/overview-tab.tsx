@@ -16,7 +16,7 @@ import { useRef, useState, useEffect } from 'react';
 import KaspaQrCode from '@/components/kaspa-qrcode';
 import SendForm from '@/components/send-form';
 import MessageForm from '@/components/message-form';
-import { IconCopy, IconCheck, IconShieldCheckFilled, IconShield } from '@tabler/icons-react';
+import {IconCopy, IconCheck, IconShieldCheckFilled, IconShield, IconRefresh} from '@tabler/icons-react';
 import AddressText from '@/components/address-text';
 import { fetchAddressDetails, fetchTransaction, getAddress } from '@/lib/ledger';
 import { delay } from '@/lib/util';
@@ -90,7 +90,7 @@ export default function OverviewTab(props) {
         }
     };
 
-    const updateAddressDetails = async (transactionId) => {
+    const updateAddressDetails = async (transactionId?) => {
         if (!props.setAddresses && !props.setSelectedAddress) {
             return;
         }
@@ -98,31 +98,33 @@ export default function OverviewTab(props) {
         setUpdatingDetails(true);
 
         try {
-            // Data needs some time to propagrate. Before we load new info, let's wait
-            await delay(1500);
+            if (transactionId) {
+                // Data needs some time to propagrate. Before we load new info, let's wait
+                await delay(1500);
 
-            for (let tries = 0; tries < 10; tries++) {
-                try {
-                    const txData = await fetchTransaction(transactionId);
+                for (let tries = 0; tries < 10; tries++) {
+                    try {
+                        const txData = await fetchTransaction(transactionId);
 
-                    if (txData.is_accepted) {
-                        break;
-                    }
+                        if (txData.is_accepted) {
+                            break;
+                        }
 
-                    await delay(1000);
-                } catch (e) {
-                    if (e.response && e.response.status === 404) {
                         await delay(1000);
-                        continue;
-                    } else {
-                        // No errors expected here. Only log it if there's any:
-                        console.error(e);
-                        break;
+                    } catch (e) {
+                        if (e.response && e.response.status === 404) {
+                            await delay(1000);
+                            continue;
+                        } else {
+                            // No errors expected here. Only log it if there's any:
+                            console.error(e);
+                            break;
+                        }
                     }
                 }
             }
 
-            // After waiting for a bit, now we update the address details
+            // After possibly waiting for a bit, now we update the address details
             const addressDetails = await fetchAddressDetails(
                 selectedAddress.address,
                 selectedAddress.derivationPath,
@@ -209,6 +211,7 @@ export default function OverviewTab(props) {
                                                 <IconCopy
                                                     color='white'
                                                     size='18.5px'
+                                                    style={{cursor: "pointer"}}
                                                     className={styles['copy-icon']}
                                                     onClick={copy}
                                                 />
@@ -238,11 +241,25 @@ export default function OverviewTab(props) {
 
                         <KaspaQrCode value={selectedAddress.address} />
 
-                        <Group gap={'xs'}>
+                        <Group gap={'xs'} >
                             {updatingDetails ? (
                                 <Loader size={20} />
                             ) : (
-                                <Text fz='lg'>{selectedAddress.balance} KAS</Text>
+                                <Group
+                                    gap={5}
+                                    ta={'center'}
+                                >
+                                    <Text fz='lg'>{selectedAddress.balance} KAS</Text>
+                                    <Tooltip label='Refresh balance'>
+                                        <IconRefresh
+                                            color='white'
+                                            size='18.5px'
+                                            style={{cursor: "pointer"}}
+                                            className={styles['refresh-icon']}
+                                            onClick={() => updateAddressDetails()}
+                                        />
+                                    </Tooltip>
+                                </Group>
                             )}
                         </Group>
                     </Stack>
