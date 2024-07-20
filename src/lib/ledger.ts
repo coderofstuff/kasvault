@@ -37,12 +37,14 @@ export type UtxoSelectionResult = {
  * @param amount - the amount to select for, in SOMPI
  * @param utxosInput - the utxos array to select from
  * @param feeIncluded - whether or not fees are included in the amount passed
+ * @param requiredFee - the minimum amount of fee to spend
  * @returns [has_enough, utxos, fee, total]
  */
 export function selectUtxos(
     amount: number,
     utxosInput: UtxoInfo[],
     feeIncluded: boolean = false,
+    requiredFee: number = 0,
 ): UtxoSelectionResult {
     // Fee does not have to be accurate. It just has to be over the absolute minimum.
     // https://kaspa-mdbook.aspectron.com/transactions/constraints/fees.html
@@ -66,15 +68,18 @@ export function selectUtxos(
     // 2. The signature script len is 66 (always true schnorr addresses)
     // 3. Payload is zero hash payload
     // 4. We're at mainnet
-    let fee = 239 + 690;
+    let minimumFee = 239 + 690;
+    let fee = 0;
     let total = 0;
 
     const selected = [];
 
     // UTXOs is sorted descending:
     for (const utxo of utxosInput) {
-        fee += 1118; // 1118 is described here https://kaspa-mdbook.aspectron.com/transactions/constraints/mass.html#input-mass
+        minimumFee += 1118; // 1118 is described here https://kaspa-mdbook.aspectron.com/transactions/constraints/mass.html#input-mass
         total += utxo.amount;
+
+        fee = Math.max(minimumFee, requiredFee);
 
         selected.push(utxo);
 
@@ -255,18 +260,20 @@ export function createTransaction(
     derivationPath: string,
     changeAddress: string,
     feeIncluded: boolean = false,
+    requiredFee: number = 0,
 ) {
     console.info('Amount:', amount);
     console.info('Send to:', sendTo);
     console.info('UTXOs:', utxosInput);
     console.info('Derivation Path:', derivationPath);
+    console.info('Required Fee:', requiredFee);
 
     const {
         hasEnough,
         utxos,
         fee,
         total: totalUtxoAmount,
-    } = selectUtxos(amount, utxosInput, feeIncluded);
+    } = selectUtxos(amount, utxosInput, feeIncluded, requiredFee);
 
     console.info('hasEnough', hasEnough);
     console.info(utxos);
