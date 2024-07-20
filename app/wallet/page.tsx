@@ -1,7 +1,7 @@
 'use client';
 
 import styles from './page.module.css';
-import { getAddress, fetchAddressDetails, initTransport, getAddressBalance } from '@/lib/ledger';
+import { getAddress, fetchAddressDetails, initTransport, fetchAddressBalance } from '@/lib/ledger';
 import { useState, useEffect } from 'react';
 import { Stack, Tabs, Breadcrumbs, Anchor, Button, Center } from '@mantine/core';
 import Header from '../../components/header';
@@ -97,7 +97,7 @@ async function loadOrScanAddressBatch(bip32, callback, callbackSetRawAddresses, 
                     promises.push(
                         new Promise(async (resolve, reject) => {
                             try {
-                                const balanceData = await getAddressBalance(address);
+                                const balanceData = await fetchAddressBalance(address);
 
                                 resolve({ balanceData, addressIndex });
                             } catch (e) {
