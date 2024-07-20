@@ -79,22 +79,32 @@ async function loadOrScanAddressBatch(bip32, callback, callbackSetRawAddresses, 
 
                 // scan for the next batch of 5 addresses to see which is the latest one with that had funds
                 const batchSize = 5;
-                console.info(`Scanning receive address range ${scanIndexStart} - ${scanIndexStart + batchSize - 1}`);
+                console.info(
+                    `Scanning receive address range ${scanIndexStart} - ${
+                        scanIndexStart + batchSize - 1
+                    }`,
+                );
 
                 let promises = [];
-                for (let addressIndex = scanIndexStart; addressIndex < scanIndexStart + batchSize; addressIndex++) {
+                for (
+                    let addressIndex = scanIndexStart;
+                    addressIndex < scanIndexStart + batchSize;
+                    addressIndex++
+                ) {
                     const addressType = 0; // Receive
                     const address = bip32.getAddress(addressType, addressIndex);
 
-                    promises.push(new Promise(async (resolve, reject) => {
-                        try {
-                            const balanceData = await getAddressBalance(address);
+                    promises.push(
+                        new Promise(async (resolve, reject) => {
+                            try {
+                                const balanceData = await getAddressBalance(address);
 
-                            resolve({balanceData, addressIndex});
-                        } catch (e) {
-                            reject(e);
-                        }
-                    }));
+                                resolve({ balanceData, addressIndex });
+                            } catch (e) {
+                                reject(e);
+                            }
+                        }),
+                    );
                 }
 
                 try {
@@ -113,7 +123,8 @@ async function loadOrScanAddressBatch(bip32, callback, callbackSetRawAddresses, 
                     notifications.hide(notifId);
                     notifications.show({
                         title: 'Error',
-                        message: 'Failed to scan for addresses with balance. Refresh the page to retry.',
+                        message:
+                            'Failed to scan for addresses with balance. Refresh the page to retry.',
                         autoClose: false,
                         color: 'red',
                     });
@@ -129,7 +140,9 @@ async function loadOrScanAddressBatch(bip32, callback, callbackSetRawAddresses, 
             notifications.hide(notifId);
             notifications.show({
                 title: 'Initial scan complete',
-                message: `${addressesWithBalancesFound} ${addressesWithBalancesFound <= 1 ? 'address' : 'addresses'} with balance found`,
+                message: `${addressesWithBalancesFound} ${
+                    addressesWithBalancesFound <= 1 ? 'address' : 'addresses'
+                } with balance found`,
             });
         }
 
@@ -405,14 +418,11 @@ export default function Dashboard() {
         }
 
         if (deviceType === 'usb') {
-            loadOrScanAddressBatch(
-                bip32base,
-                setAddresses,
-                setRawAddresses,
-                userSettings,
-            ).finally(() => {
-                setEnableGenerate(true);
-            });
+            loadOrScanAddressBatch(bip32base, setAddresses, setRawAddresses, userSettings).finally(
+                () => {
+                    setEnableGenerate(true);
+                },
+            );
         } else if (deviceType === 'demo') {
             userSettings.setSetting('lastReceiveIndex', 0);
             demoLoadAddress(
