@@ -1,7 +1,7 @@
 'use client';
 
 import styles from './page.module.css';
-import { getAddress, fetchAddressDetails, initTransport } from '@/lib/ledger';
+import { getAddress, fetchAddressDetails, initTransport, getAddressBalance } from '@/lib/ledger';
 import { useState, useEffect } from 'react';
 import { Stack, Tabs, Breadcrumbs, Anchor, Button, Center } from '@mantine/core';
 import Header from '../../components/header';
@@ -46,15 +46,92 @@ function loadAddressDetails(rawAddress) {
     });
 }
 
-async function loadAddressBatch(bip32, callback, callbackSetRawAddresses, lastReceiveIndex) {
+async function loadOrScanAddressBatch(bip32, callback, callbackSetRawAddresses, userSettings) {
     if (loadingAddressBatch || addressInitialized) {
         return;
     }
+
+    let lastReceiveIndex = userSettings.getSetting('lastReceiveIndex');
 
     loadingAddressBatch = true;
 
     try {
         let rawAddresses = [];
+
+        // If receive address isn't initialized yet, scan for the last address with funds within a batch:
+        if (lastReceiveIndex < 0) {
+            const notifId = notifications.show({
+                title: 'First-time load detected',
+                message: 'Scanning for addresses with balance',
+                loading: true,
+            });
+            console.info('Initial load detected. Scanning for addresses');
+            let nonEmptyAddressFound = true;
+            let scanIndexStart = 0;
+            let latestWithFunds = 0;
+            let addressesWithBalancesFound = 0;
+
+            while (nonEmptyAddressFound) {
+                if (scanIndexStart > 0) {
+                    await delay(1000);
+                }
+                nonEmptyAddressFound = false;
+
+                // scan for the next batch of 5 addresses to see which is the latest one with that had funds
+                const batchSize = 5;
+                console.info(`Scanning receive address range ${scanIndexStart} - ${scanIndexStart + batchSize - 1}`);
+
+                let promises = [];
+                for (let addressIndex = scanIndexStart; addressIndex < scanIndexStart + batchSize; addressIndex++) {
+                    const addressType = 0; // Receive
+                    const address = bip32.getAddress(addressType, addressIndex);
+
+                    promises.push(new Promise(async (resolve, reject) => {
+                        try {
+                            const balanceData = await getAddressBalance(address);
+
+                            resolve({balanceData, addressIndex});
+                        } catch (e) {
+                            reject(e);
+                        }
+                    }));
+                }
+
+                try {
+                    const scanResults = await Promise.all(promises);
+
+                    for (const result of scanResults) {
+                        if (result.balanceData.balance > 0) {
+                            if (result.addressIndex > latestWithFunds) {
+                                latestWithFunds = result.addressIndex;
+                            }
+                            nonEmptyAddressFound = true;
+                            addressesWithBalancesFound++;
+                        }
+                    }
+                } catch (e) {
+                    notifications.hide(notifId);
+                    notifications.show({
+                        title: 'Error',
+                        message: 'Failed to scan for addresses with balance. Refresh the page to retry.',
+                        autoClose: false,
+                        color: 'red',
+                    });
+                    throw e;
+                }
+
+                scanIndexStart += 5;
+            }
+
+            lastReceiveIndex = latestWithFunds;
+            userSettings.setSetting('lastReceiveIndex', lastReceiveIndex);
+            console.info('Address scan complete. Last address index with funds', lastReceiveIndex);
+            notifications.hide(notifId);
+            notifications.show({
+                title: 'Initial scan complete',
+                message: `${addressesWithBalancesFound} ${addressesWithBalancesFound <= 1 ? 'address' : 'addresses'} with balance found`,
+            });
+        }
 
         for (let addressIndex = 0; addressIndex <= lastReceiveIndex; addressIndex++) {
             const addressType = 0; // Receive
@@ -328,15 +405,16 @@ export default function Dashboard() {
         }
 
         if (deviceType === 'usb') {
-            loadAddressBatch(
+            loadOrScanAddressBatch(
                 bip32base,
                 setAddresses,
                 setRawAddresses,
-                userSettings.getSetting('lastReceiveIndex'),
+                userSettings,
             ).finally(() => {
                 setEnableGenerate(true);
             });
         } else if (deviceType === 'demo') {
+            userSettings.setSetting('lastReceiveIndex', 0);
             demoLoadAddress(
                 bip32base,
                 setAddresses,
