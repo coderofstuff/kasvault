@@ -129,10 +129,16 @@ export type UtxoInfo = {
     amount: number;
 };
 
-export async function fetchAddressDetails(address, derivationPath) {
+export async function fetchAddressBalance(address) {
     const { data: balanceData } = await axios.get(
         `https://api.kaspa.org/addresses/${address}/balance`,
     );
+
+    return balanceData;
+}
+
+export async function fetchAddressDetails(address, derivationPath) {
+    const balanceData = await fetchAddressBalance(address);
     const { data: utxoData } = await axios.get(`https://api.kaspa.org/addresses/${address}/utxos`);
 
     // UTXOs sorted by decreasing amount. Using the biggest UTXOs first minimizes number of utxos needed

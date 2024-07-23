@@ -11,7 +11,7 @@ class SettingsStore {
         } else {
             this.settings = {
                 receiveAddresses: {},
-                lastReceiveIndex: 0,
+                lastReceiveIndex: -1,
                 changeAddresses: {},
                 lastChangeIndex: -1,
                 version: 0,
