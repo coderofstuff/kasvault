@@ -39,6 +39,7 @@ export default function SendForm(props) {
         initialValues: {
             amount: undefined,
             sendTo: '',
+            priorityFee: undefined,
             includeFeeInAmount: false,
             sentAmount: '',
             sentTo: '',
@@ -46,6 +47,7 @@ export default function SendForm(props) {
         },
         validate: {
             amount: (value) => (!(Number(value) > 0) ? 'Amount must be greater than 0' : null),
+            priorityFee: (value) => (Number(value) < 0 || Number(value) > 10) ? 'Priority fee must be between 0 and 10' : null,
             sendTo: (value) => (!/^kaspa\:[a-z0-9]{61,63}$/.test(value) ? 'Invalid address' : null),
         },
         validateInputOnBlur: true,
@@ -55,7 +57,7 @@ export default function SendForm(props) {
         // Reset setup
         setConfirming(false);
         setFee('-');
-        let baseValues = { amount: '', sendTo: '', includeFeeInAmount: false };
+        let baseValues = { amount: '', sendTo: '', priorityFee: '', includeFeeInAmount: false };
 
         if (resetAllValues) {
             form.setValues({ sentTo: '', sentTxId: '', sentAmount: '', ...baseValues });
@@ -89,8 +91,8 @@ export default function SendForm(props) {
 
     useEffect(() => {
         // Whenever any of fields change, we calculate the fees
-        calcFee(form.values.sendTo, form.values.amount, form.values.includeFeeInAmount);
-    }, [form.values.sendTo, form.values.amount, form.values.includeFeeInAmount]);
+        calcFee(form.values.sendTo, form.values.amount, form.values.priorityFee, form.values.includeFeeInAmount);
+    }, [form.values.sendTo, form.values.amount, form.values.priorityFee, form.values.includeFeeInAmount]);
 
     const { start: simulateConfirmation } = useTimeout((args) => {
         // Hide when ledger confirms
@@ -120,6 +122,7 @@ export default function SendForm(props) {
                     props.addressContext.utxos,
                     props.addressContext.derivationPath,
                     props.addressContext.address,
+                    kasToSompi(Number(form.values.priorityFee)),
                     form.values.includeFeeInAmount,
                 );
 
@@ -159,7 +162,7 @@ export default function SendForm(props) {
         }
     };
 
-    const calcFee = (sendTo, amount, includeFeeInAmount) => {
+    const calcFee = (sendTo, amount, priorityFee, includeFeeInAmount) => {
         setAmountDescription('');
 
         if (amount && sendTo) {
@@ -170,7 +173,7 @@ export default function SendForm(props) {
                 utxos,
                 fee: feeCalcResult,
                 total: utxoTotalAmount,
-            } = selectUtxos(kasToSompi(amount), props.addressContext.utxos, includeFeeInAmount);
+            } = selectUtxos(kasToSompi(amount), props.addressContext.utxos, kasToSompi(priorityFee), includeFeeInAmount);
 
             if (utxos.length > NETWORK_UTXO_LIMIT) {
                 const maxCompoundableAmount = sompiToKas(
@@ -260,6 +263,25 @@ export default function SendForm(props) {
                     }
                     inputWrapperOrder={['label', 'input', 'description', 'error']}
                     description={amountDescription}
+                />
+
+                <NumberInput
+                    label='Priority fee in KAS'
+                    placeholder='0'
+                    min={0}
+                    max={10}
+                    decimalScale={8}
+                    disabled={confirming}
+                    {...form.getInputProps('priorityFee')}
+                    rightSectionWidth={'3rem'}
+                    rightSection={
+                        <UnstyledButton aria-label='Set Max Amount' onClick={() => form.setValues({priorityFee: ''})}>
+                            <Text size='0.8rem' c={'brand'}>
+                                RESET
+                            </Text>
+                        </UnstyledButton>
+                    }
+                    inputWrapperOrder={['label', 'input', 'description', 'error']}
                 />
 
                 <Checkbox
