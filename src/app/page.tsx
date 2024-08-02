@@ -2,21 +2,21 @@
 
 import styles from './page.module.css';
 import { initTransport, getAppAndVersion } from '../lib/ledger';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
+
 import { notifications } from '@mantine/notifications';
 
-import { Stack, Group, Text } from '@mantine/core';
+import { Image, Stack, Group, Text } from '@mantine/core';
 import { TransportOpenUserCancelled } from '@ledgerhq/errors';
 import { IconUsb, IconBluetooth } from '@tabler/icons-react';
 
-import Image from 'next/image';
 import Header from '../components/header';
 import { useViewportSize } from '@mantine/hooks';
 import { useEffect, useState } from 'react';
 
-async function getAppData(router, deviceType = 'usb') {
+async function getAppData(navigate, deviceType = 'usb') {
     if (deviceType === 'demo') {
-        return router.push(`/wallet?deviceType=${deviceType}`);
+        return navigate(`/wallet?deviceType=${deviceType}`, { replace: true });
     }
 
     if (deviceType !== 'usb' && deviceType !== 'bluetooth') {
@@ -31,7 +31,7 @@ async function getAppData(router, deviceType = 'usb') {
         const { name } = await getAppAndVersion(transport);
 
         if (name == 'Kaspa') {
-            return router.push(`/wallet?deviceType=${deviceType}`);
+            return navigate(`/wallet?deviceType=${deviceType}`, { replace: true });
         } else {
             notifications.show({
                 title: 'Action Required',
@@ -70,7 +70,7 @@ const WHITELIST = [
 ];
 
 export default function Home() {
-    const router = useRouter();
+    const navigate = useNavigate();
     const { width } = useViewportSize();
     const [siteHostname, setSiteHostname] = useState('INVALID SITE');
     const [isShowDemo, setIsShowDemo] = useState(false);
@@ -96,7 +96,7 @@ export default function Home() {
         <Stack
             className={styles.card}
             onClick={() => {
-                getAppData(router, 'demo');
+                getAppData(navigate, 'demo');
             }}
             align='center'
         >
@@ -125,7 +125,6 @@ export default function Home() {
                     alt='KasVault'
                     width={180}
                     height={180}
-                    priority
                 />
             </Group>
 
@@ -135,7 +134,7 @@ export default function Home() {
                 <Stack
                     className={styles.card}
                     onClick={() => {
-                        getAppData(router, 'usb');
+                        getAppData(navigate, 'usb');
                     }}
                     align='center'
                 >

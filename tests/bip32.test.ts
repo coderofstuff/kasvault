@@ -1,4 +1,4 @@
-import KaspaBIP32 from '@/lib/bip32';
+import KaspaBIP32 from '@/src/lib/bip32';
 
 describe('KaspaBIP32', () => {
     it('should generate the expected addresses', () => {

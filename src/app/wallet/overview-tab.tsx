@@ -13,16 +13,16 @@ import {
 import { useViewportSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useRef, useState, useEffect } from 'react';
-import KaspaQrCode from '@/components/kaspa-qrcode';
-import SendForm from '@/components/send-form';
-import MessageForm from '@/components/message-form';
+import KaspaQrCode from '../../components/kaspa-qrcode';
+import SendForm from '../../components/send-form';
+import MessageForm from '../../components/message-form';
 import { IconCopy, IconCheck, IconShieldCheckFilled, IconShield } from '@tabler/icons-react';
-import AddressText from '@/components/address-text';
-import { fetchAddressDetails, fetchTransaction, getAddress } from '@/lib/ledger';
-import { delay } from '@/lib/util';
+import AddressText from '../../components/address-text';
+import { fetchAddressDetails, fetchTransaction, getAddress } from '../../lib/ledger';
+import { delay } from '../../lib/util';
 
 import styles from './overview-tab.module.css';
-import { sompiToKas } from '@/lib/kaspa-util';
+import { sompiToKas } from '../../lib/kaspa-util';
 
 export default function OverviewTab(props) {
     const groupRef = useRef(null);

@@ -14,13 +14,12 @@ import {
 } from '@mantine/core';
 import { useTimeout, useDisclosure, useViewportSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { useSearchParams } from 'next/navigation';
 
 import { useState, useEffect } from 'react';
-import { createTransaction, sendAmount, selectUtxos } from '@/lib/ledger';
-import AddressText from '@/components/address-text';
+import { createTransaction, sendAmount, selectUtxos } from '../lib/ledger';
+import AddressText from '../components/address-text';
 import { useForm } from '@mantine/form';
-import { kasToSompi, sompiToKas, NETWORK_UTXO_LIMIT } from '@/lib/kaspa-util';
+import { kasToSompi, sompiToKas, NETWORK_UTXO_LIMIT } from '../lib/kaspa-util';
 
 export default function SendForm(props) {
     const [confirming, setConfirming] = useState(false);
@@ -32,7 +31,7 @@ export default function SendForm(props) {
     const [isSuccessModalOpen, { open: openSuccessModal, close: closeSuccessModal }] =
         useDisclosure();
 
-    const deviceType = useSearchParams().get('deviceType');
+    const deviceType = new URLSearchParams(window.location.search).get('deviceType');
     const { width: viewportWidth } = useViewportSize();
 
     const form = useForm({

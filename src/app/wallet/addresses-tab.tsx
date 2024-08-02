@@ -1,6 +1,6 @@
 'use client';
 
-import AddressText from '@/components/address-text';
+import AddressText from '../../components/address-text';
 import styles from './addresses-tab.module.css';
 import {
     Badge,

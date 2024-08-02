@@ -4,9 +4,9 @@ import '@mantine/notifications/styles.css';
 import React from 'react';
 import { MantineProvider, ColorSchemeScript } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
-import { Inter } from 'next/font/google';
+// import { Inter } from 'next/font/google';
 
-const inter = Inter({ subsets: ['latin'] });
+// const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
     title: 'KasVault',
@@ -20,7 +20,7 @@ export default function RootLayout({ children }) {
                 <ColorSchemeScript />
                 <link rel='shortcut icon' href='/favicon.svg' />
             </head>
-            <body className={inter.className}>
+            <body>
                 <MantineProvider
                     defaultColorScheme='dark'
                     theme={{

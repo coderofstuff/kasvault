@@ -1,24 +1,28 @@
 'use client';
 
 import styles from './page.module.css';
-import { getAddress, fetchAddressDetails, initTransport, fetchAddressBalance } from '@/lib/ledger';
+import {
+    getAddress,
+    fetchAddressDetails,
+    initTransport,
+    fetchAddressBalance,
+} from '../../lib/ledger';
 import { useState, useEffect } from 'react';
 import { Stack, Tabs, Breadcrumbs, Anchor, Button, Center } from '@mantine/core';
 import Header from '../../components/header';
 import AddressesTab from './addresses-tab';
 import OverviewTab from './overview-tab';
 import TransactionsTab from './transactions-tab';
-import { useSearchParams } from 'next/navigation';
 import { LockedDeviceError } from '@ledgerhq/errors';
 import sha256 from 'crypto-js/sha256';
 
 import KaspaBIP32 from '../../lib/bip32';
-import { delay } from '@/lib/util';
+import { delay } from '../../lib/util';
 
 import { useElementSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import SettingsStore from '@/lib/settings-store';
-import { kasToSompi, sompiToKas, NETWORK_UTXO_LIMIT } from '@/lib/kaspa-util';
+import SettingsStore from '../../lib/settings-store';
+import { kasToSompi, sompiToKas, NETWORK_UTXO_LIMIT } from '../../lib/kaspa-util';
 
 let loadingAddressBatch = false;
 let addressInitialized = false;
@@ -349,7 +353,7 @@ export default function Dashboard() {
         }
     }
 
-    const searchParams = useSearchParams();
+    const searchParams = new URLSearchParams(window.location.search);
 
     const deviceType = searchParams.get('deviceType');
 
