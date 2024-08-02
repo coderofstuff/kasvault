@@ -1,6 +1,3 @@
-import './app/globals.css';
-import '@mantine/core/styles.css';
-import '@mantine/notifications/styles.css';
 import * as React from 'react';
 import { Routes, Route } from 'react-router-dom';
 
@@ -16,7 +13,7 @@ export default function App() {
             <MantineProvider
                 defaultColorScheme='dark'
                 theme={{
-                    fontFamily: 'Lato',
+                    fontFamily: 'Inter',
                     fontFamilyMonospace: 'Roboto Mono,Courier New,Courier,monospace',
                     colors: {
                         brand: [
@@ -34,6 +31,7 @@ export default function App() {
                     },
                     primaryColor: 'brand',
                 }}
+                withGlobalStyles
             >
                 <Notifications />
                 <Routes>
