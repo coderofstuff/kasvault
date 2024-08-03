@@ -16,7 +16,13 @@ import { useRef, useState, useEffect } from 'react';
 import KaspaQrCode from '@/components/kaspa-qrcode';
 import SendForm from '@/components/send-form';
 import MessageForm from '@/components/message-form';
-import {IconCopy, IconCheck, IconShieldCheckFilled, IconShield, IconRefresh} from '@tabler/icons-react';
+import {
+    IconCopy,
+    IconCheck,
+    IconShieldCheckFilled,
+    IconShield,
+    IconRefresh,
+} from '@tabler/icons-react';
 import AddressText from '@/components/address-text';
 import { fetchAddressDetails, fetchTransaction, getAddress } from '@/lib/ledger';
 import { delay } from '@/lib/util';
@@ -211,7 +217,7 @@ export default function OverviewTab(props) {
                                                 <IconCopy
                                                     color='white'
                                                     size='18.5px'
-                                                    style={{cursor: "pointer"}}
+                                                    style={{ cursor: 'pointer' }}
                                                     className={styles['copy-icon']}
                                                     onClick={copy}
                                                 />
@@ -241,20 +247,17 @@ export default function OverviewTab(props) {
 
                         <KaspaQrCode value={selectedAddress.address} />
 
-                        <Group gap={'xs'} >
+                        <Group gap={'xs'}>
                             {updatingDetails ? (
                                 <Loader size={20} />
                             ) : (
-                                <Group
-                                    gap={5}
-                                    ta={'center'}
-                                >
+                                <Group gap={5} ta={'center'}>
                                     <Text fz='lg'>{selectedAddress.balance} KAS</Text>
                                     <Tooltip label='Refresh balance'>
                                         <IconRefresh
                                             color='white'
                                             size='18.5px'
-                                            style={{cursor: "pointer"}}
+                                            style={{ cursor: 'pointer' }}
                                             className={styles['refresh-icon']}
                                             onClick={() => updateAddressDetails()}
                                         />
