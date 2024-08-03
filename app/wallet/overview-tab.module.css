@@ -1,12 +1,19 @@
 .copy-icon {
+    margin-left: 5px;
     vertical-align: middle;
 }
 
 .verify-icon {
+    margin-left: 5px;
     vertical-align: middle;
 }
 
 .verified-icon {
+    padding-left: 5px;
     color: green;
+    vertical-align: middle;
+}
+
+.refresh-icon {
     vertical-align: middle;
 }
