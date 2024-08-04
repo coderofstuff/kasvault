@@ -73,3 +73,8 @@
         color-scheme: dark;
     }
 }
+
+@font-face {
+    font-family: 'Inter';
+    src: url(../../public/fonts/Inter-VariableFont_opsz,wght.ttf);
+}
