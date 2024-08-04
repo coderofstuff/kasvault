@@ -1,6 +1,6 @@
 {
-    "short_name": "React App",
-    "name": "Create React App Sample",
+    "short_name": "KasVault",
+    "name": "KasVault",
     "icons": [
         {
             "src": "favicon.ico",
@@ -8,14 +8,14 @@
             "type": "image/x-icon"
         },
         {
-            "src": "logo192.png",
+            "src": "kasvault-full-stk.svg",
             "type": "image/png",
-            "sizes": "192x192"
+            "sizes": "any"
         },
         {
-            "src": "logo512.png",
+            "src": "kaspa-icon.svg",
             "type": "image/png",
-            "sizes": "512x512"
+            "sizes": "any"
         }
     ],
     "start_url": ".",
