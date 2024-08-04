@@ -3,16 +3,14 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "dev": "next dev",
+        "dev": "react-app-rewired start",
+        "start": "react-app-rewired start",
         "build": "react-app-rewired build",
-        "start": "next start",
+        "eject": "react-app-rewired eject",
         "lint": "prettier --check './**/*.{js,jsx,ts,tsx,css}' --config ./.prettierrc",
         "test": "jest",
-        "format": "prettier --write './**/*.{js,jsx,ts,tsx,css}' --config ./.prettierrc",
-        "cra:start": "react-app-rewired start",
-        "cra:build": "react-app-rewired build",
         "cra:test": "react-app-rewired test",
-        "cra:eject": "react-app-rewired eject"
+        "format": "prettier --write './**/*.{js,jsx,ts,tsx,css}' --config ./.prettierrc"
     },
     "dependencies": {
         "@bitcoinerlab/secp256k1": "^1.0.5",
@@ -35,10 +33,10 @@
         "react": "18.3.1",
         "react-dom": "18.3.1",
         "react-qrcode-logo": "^2.9.0",
-        "react-router-dom": "^6.26.0",
-        "web-vitals": "^2.1.4"
+        "react-router-dom": "^6.26.0"
     },
     "devDependencies": {
+        "@types/jest": "^29.5.12",
         "@types/react": "18.2.46",
         "buffer": "^6.0.3",
         "eslint": "^8.54.0",

@@ -91,7 +91,7 @@ function checksumToArray(checksum) {
 
 export function publicKeyToAddress(
     hashBuffer: Buffer,
-    stripPrefix: boolean,
+    stripPrefix?: boolean,
     type: string = 'schnorr',
 ): string {
     function getTypeBits(type) {
