@@ -2,7 +2,7 @@ import {
     addressToPublicKey,
     publicKeyToAddress,
     addressToScriptPublicKey,
-} from '@/src/lib/kaspa-util';
+} from '../src/lib/kaspa-util';
 
 describe('addressToPublicKey', () => {
     it('should be able to round-trip', () => {

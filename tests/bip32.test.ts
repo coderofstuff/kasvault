@@ -1,4 +1,4 @@
-import KaspaBIP32 from '@/src/lib/bip32';
+import KaspaBIP32 from '../src/lib/bip32';
 
 describe('KaspaBIP32', () => {
     it('should generate the expected addresses', () => {
@@ -37,7 +37,7 @@ describe('KaspaBIP32', () => {
 
         for (const testCase of testCases) {
             const path = testCase.derivationPath.split('/');
-            expect(bip32.getAddress(path[3], path[4])).toBe(testCase.address);
+            expect(bip32.getAddress(Number(path[3]), Number(path[4]))).toBe(testCase.address);
         }
     });
 });
