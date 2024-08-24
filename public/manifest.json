@@ -1,0 +1,22 @@
+{
+    "short_name": "KasVault",
+    "name": "KasVault",
+    "icons": [
+        {
+            "src": "favicon.svg",
+            "sizes": "any"
+        },
+        {
+            "src": "kasvault-full-stk.svg",
+            "sizes": "any"
+        },
+        {
+            "src": "kaspa-icon.svg",
+            "sizes": "any"
+        }
+    ],
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#000000",
+    "background_color": "#ffffff"
+}

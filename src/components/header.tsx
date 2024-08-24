@@ -1,5 +1,4 @@
-import Image from 'next/image';
-import { Group } from '@mantine/core';
+import { Image, Group } from '@mantine/core';
 
 import styles from './header.module.css';
 
@@ -15,7 +14,6 @@ export default function Header(props) {
                         className={styles.kaspaLogo}
                         width={48}
                         height={48}
-                        priority
                     />
                 </a>
             </div>

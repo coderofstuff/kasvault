@@ -1,4 +1,4 @@
-import base32 from '@/lib/base32';
+import base32 from '../lib/base32';
 
 function convertBits(data: number[], from: number, to: number, strict: boolean = false): number[] {
     strict = strict || false;
@@ -91,7 +91,7 @@ function checksumToArray(checksum) {
 
 export function publicKeyToAddress(
     hashBuffer: Buffer,
-    stripPrefix: boolean,
+    stripPrefix?: boolean,
     type: string = 'schnorr',
 ): string {
     function getTypeBits(type) {
