@@ -28,5 +28,8 @@ module.exports = function override(config) {
             fullySpecified: false,
         },
     });
+    config.experiments = {
+        asyncWebAssembly: true,
+    };
     return config;
 };
