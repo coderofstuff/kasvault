@@ -1,6 +1,65 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
+* Returns true if the script passed is a pay-to-script-hash (P2SH) format, false otherwise.
+* @param script - The script ({@link HexString} or Uint8Array).
+* @category Wallet SDK
+* @param {HexString | Uint8Array} script
+* @returns {boolean}
+*/
+export function isScriptPayToScriptHash(script: HexString | Uint8Array): boolean;
+/**
+* Returns returns true if the script passed is an ECDSA pay-to-pubkey.
+* @param script - The script ({@link HexString} or Uint8Array).
+* @category Wallet SDK
+* @param {HexString | Uint8Array} script
+* @returns {boolean}
+*/
+export function isScriptPayToPubkeyECDSA(script: HexString | Uint8Array): boolean;
+/**
+* Returns true if the script passed is a pay-to-pubkey.
+* @param script - The script ({@link HexString} or Uint8Array).
+* @category Wallet SDK
+* @param {HexString | Uint8Array} script
+* @returns {boolean}
+*/
+export function isScriptPayToPubkey(script: HexString | Uint8Array): boolean;
+/**
+* Returns the address encoded in a script public key.
+* @param script_public_key - The script public key ({@link ScriptPublicKey}).
+* @param network - The network type.
+* @category Wallet SDK
+* @param {ScriptPublicKey | HexString} script_public_key
+* @param {NetworkType | NetworkId | string} network
+* @returns {Address | undefined}
+*/
+export function addressFromScriptPublicKey(script_public_key: ScriptPublicKey | HexString, network: NetworkType | NetworkId | string): Address | undefined;
+/**
+* Generates a signature script that fits a pay-to-script-hash script.
+* @param redeem_script - The redeem script ({@link HexString} or Uint8Array).
+* @param signature - The signature ({@link HexString} or Uint8Array).
+* @category Wallet SDK
+* @param {HexString | Uint8Array} redeem_script
+* @param {HexString | Uint8Array} signature
+* @returns {HexString}
+*/
+export function payToScriptHashSignatureScript(redeem_script: HexString | Uint8Array, signature: HexString | Uint8Array): HexString;
+/**
+* Takes a script and returns an equivalent pay-to-script-hash script.
+* @param redeem_script - The redeem script ({@link HexString} or Uint8Array).
+* @category Wallet SDK
+* @param {HexString | Uint8Array} redeem_script
+* @returns {ScriptPublicKey}
+*/
+export function payToScriptHashScript(redeem_script: HexString | Uint8Array): ScriptPublicKey;
+/**
+* Creates a new script to pay a transaction output to the specified address.
+* @category Wallet SDK
+* @param {Address | string} address
+* @returns {ScriptPublicKey}
+*/
+export function payToAddressScript(address: Address | string): ScriptPublicKey;
+/**
 * Returns the version of the Rusty Kaspa framework.
 * @category General
 * @returns {string}
@@ -61,6 +120,18 @@ export function presentPanicHookLogs(): void;
 */
 export function defer(): Promise<any>;
 /**
+* Kaspa Sighash types allowed by consensus
+* @category Consensus
+*/
+export enum SighashType {
+  All = 0,
+  None = 1,
+  Single = 2,
+  AllAnyOneCanPay = 3,
+  NoneAnyOneCanPay = 4,
+  SingleAnyOneCanPay = 5,
+}
+/**
 * wRPC protocol encoding: `Borsh` or `JSON`
 * @category Transport
 */
@@ -116,413 +187,6 @@ export enum ConnectStrategy {
 }
 
 /**
- * Interface defines the structure of a transaction outpoint (used by transaction input).
- * 
- * @category Consensus
- */
-export interface ITransactionOutpoint {
-    transactionId: HexString;
-    index: number;
-}
-
-
-
-/**
- * Kaspa Transaction Script Opcodes
- * @see {@link ScriptBuilder}
- * @category Consensus
- */
-export enum Opcode {
-    OpData1 = 0x01,
-    OpData2 = 0x02,
-    OpData3 = 0x03,
-    OpData4 = 0x04,
-    OpData5 = 0x05,
-    OpData6 = 0x06,
-    OpData7 = 0x07,
-    OpData8 = 0x08,
-    OpData9 = 0x09,
-    OpData10 = 0x0a,
-    OpData11 = 0x0b,
-    OpData12 = 0x0c,
-    OpData13 = 0x0d,
-    OpData14 = 0x0e,
-    OpData15 = 0x0f,
-    OpData16 = 0x10,
-    OpData17 = 0x11,
-    OpData18 = 0x12,
-    OpData19 = 0x13,
-    OpData20 = 0x14,
-    OpData21 = 0x15,
-    OpData22 = 0x16,
-    OpData23 = 0x17,
-    OpData24 = 0x18,
-    OpData25 = 0x19,
-    OpData26 = 0x1a,
-    OpData27 = 0x1b,
-    OpData28 = 0x1c,
-    OpData29 = 0x1d,
-    OpData30 = 0x1e,
-    OpData31 = 0x1f,
-    OpData32 = 0x20,
-    OpData33 = 0x21,
-    OpData34 = 0x22,
-    OpData35 = 0x23,
-    OpData36 = 0x24,
-    OpData37 = 0x25,
-    OpData38 = 0x26,
-    OpData39 = 0x27,
-    OpData40 = 0x28,
-    OpData41 = 0x29,
-    OpData42 = 0x2a,
-    OpData43 = 0x2b,
-    OpData44 = 0x2c,
-    OpData45 = 0x2d,
-    OpData46 = 0x2e,
-    OpData47 = 0x2f,
-    OpData48 = 0x30,
-    OpData49 = 0x31,
-    OpData50 = 0x32,
-    OpData51 = 0x33,
-    OpData52 = 0x34,
-    OpData53 = 0x35,
-    OpData54 = 0x36,
-    OpData55 = 0x37,
-    OpData56 = 0x38,
-    OpData57 = 0x39,
-    OpData58 = 0x3a,
-    OpData59 = 0x3b,
-    OpData60 = 0x3c,
-    OpData61 = 0x3d,
-    OpData62 = 0x3e,
-    OpData63 = 0x3f,
-    OpData64 = 0x40,
-    OpData65 = 0x41,
-    OpData66 = 0x42,
-    OpData67 = 0x43,
-    OpData68 = 0x44,
-    OpData69 = 0x45,
-    OpData70 = 0x46,
-    OpData71 = 0x47,
-    OpData72 = 0x48,
-    OpData73 = 0x49,
-    OpData74 = 0x4a,
-    OpData75 = 0x4b,
-    OpPushData1 = 0x4c,
-    OpPushData2 = 0x4d,
-    OpPushData4 = 0x4e,
-    Op1Negate = 0x4f,
-    /**
-     * Reserved
-     */
-    OpReserved = 0x50,
-    Op1 = 0x51,
-    Op2 = 0x52,
-    Op3 = 0x53,
-    Op4 = 0x54,
-    Op5 = 0x55,
-    Op6 = 0x56,
-    Op7 = 0x57,
-    Op8 = 0x58,
-    Op9 = 0x59,
-    Op10 = 0x5a,
-    Op11 = 0x5b,
-    Op12 = 0x5c,
-    Op13 = 0x5d,
-    Op14 = 0x5e,
-    Op15 = 0x5f,
-    Op16 = 0x60,
-    OpNop = 0x61,
-    /**
-     * Reserved
-     */
-    OpVer = 0x62,
-    OpIf = 0x63,
-    OpNotIf = 0x64,
-    /**
-     * Reserved
-     */
-    OpVerIf = 0x65,
-    /**
-     * Reserved
-     */
-    OpVerNotIf = 0x66,
-    OpElse = 0x67,
-    OpEndIf = 0x68,
-    OpVerify = 0x69,
-    OpReturn = 0x6a,
-    OpToAltStack = 0x6b,
-    OpFromAltStack = 0x6c,
-    Op2Drop = 0x6d,
-    Op2Dup = 0x6e,
-    Op3Dup = 0x6f,
-    Op2Over = 0x70,
-    Op2Rot = 0x71,
-    Op2Swap = 0x72,
-    OpIfDup = 0x73,
-    OpDepth = 0x74,
-    OpDrop = 0x75,
-    OpDup = 0x76,
-    OpNip = 0x77,
-    OpOver = 0x78,
-    OpPick = 0x79,
-    OpRoll = 0x7a,
-    OpRot = 0x7b,
-    OpSwap = 0x7c,
-    OpTuck = 0x7d,
-    /**
-     * Disabled
-     */
-    OpCat = 0x7e,
-    /**
-     * Disabled
-     */
-    OpSubStr = 0x7f,
-    /**
-     * Disabled
-     */
-    OpLeft = 0x80,
-    /**
-     * Disabled
-     */
-    OpRight = 0x81,
-    OpSize = 0x82,
-    /**
-     * Disabled
-     */
-    OpInvert = 0x83,
-    /**
-     * Disabled
-     */
-    OpAnd = 0x84,
-    /**
-     * Disabled
-     */
-    OpOr = 0x85,
-    /**
-     * Disabled
-     */
-    OpXor = 0x86,
-    OpEqual = 0x87,
-    OpEqualVerify = 0x88,
-    OpReserved1 = 0x89,
-    OpReserved2 = 0x8a,
-    Op1Add = 0x8b,
-    Op1Sub = 0x8c,
-    /**
-     * Disabled
-     */
-    Op2Mul = 0x8d,
-    /**
-     * Disabled
-     */
-    Op2Div = 0x8e,
-    OpNegate = 0x8f,
-    OpAbs = 0x90,
-    OpNot = 0x91,
-    Op0NotEqual = 0x92,
-    OpAdd = 0x93,
-    OpSub = 0x94,
-    /**
-     * Disabled
-     */
-    OpMul = 0x95,
-    /**
-     * Disabled
-     */
-    OpDiv = 0x96,
-    /**
-     * Disabled
-     */
-    OpMod = 0x97,
-    /**
-     * Disabled
-     */
-    OpLShift = 0x98,
-    /**
-     * Disabled
-     */
-    OpRShift = 0x99,
-    OpBoolAnd = 0x9a,
-    OpBoolOr = 0x9b,
-    OpNumEqual = 0x9c,
-    OpNumEqualVerify = 0x9d,
-    OpNumNotEqual = 0x9e,
-    OpLessThan = 0x9f,
-    OpGreaterThan = 0xa0,
-    OpLessThanOrEqual = 0xa1,
-    OpGreaterThanOrEqual = 0xa2,
-    OpMin = 0xa3,
-    OpMax = 0xa4,
-    OpWithin = 0xa5,
-    OpUnknown166 = 0xa6,
-    OpUnknown167 = 0xa7,
-    OpSha256 = 0xa8,
-    OpCheckMultiSigECDSA = 0xa9,
-    OpBlake2b = 0xaa,
-    OpCheckSigECDSA = 0xab,
-    OpCheckSig = 0xac,
-    OpCheckSigVerify = 0xad,
-    OpCheckMultiSig = 0xae,
-    OpCheckMultiSigVerify = 0xaf,
-    OpCheckLockTimeVerify = 0xb0,
-    OpCheckSequenceVerify = 0xb1,
-    OpUnknown178 = 0xb2,
-    OpUnknown179 = 0xb3,
-    OpUnknown180 = 0xb4,
-    OpUnknown181 = 0xb5,
-    OpUnknown182 = 0xb6,
-    OpUnknown183 = 0xb7,
-    OpUnknown184 = 0xb8,
-    OpUnknown185 = 0xb9,
-    OpUnknown186 = 0xba,
-    OpUnknown187 = 0xbb,
-    OpUnknown188 = 0xbc,
-    OpUnknown189 = 0xbd,
-    OpUnknown190 = 0xbe,
-    OpUnknown191 = 0xbf,
-    OpUnknown192 = 0xc0,
-    OpUnknown193 = 0xc1,
-    OpUnknown194 = 0xc2,
-    OpUnknown195 = 0xc3,
-    OpUnknown196 = 0xc4,
-    OpUnknown197 = 0xc5,
-    OpUnknown198 = 0xc6,
-    OpUnknown199 = 0xc7,
-    OpUnknown200 = 0xc8,
-    OpUnknown201 = 0xc9,
-    OpUnknown202 = 0xca,
-    OpUnknown203 = 0xcb,
-    OpUnknown204 = 0xcc,
-    OpUnknown205 = 0xcd,
-    OpUnknown206 = 0xce,
-    OpUnknown207 = 0xcf,
-    OpUnknown208 = 0xd0,
-    OpUnknown209 = 0xd1,
-    OpUnknown210 = 0xd2,
-    OpUnknown211 = 0xd3,
-    OpUnknown212 = 0xd4,
-    OpUnknown213 = 0xd5,
-    OpUnknown214 = 0xd6,
-    OpUnknown215 = 0xd7,
-    OpUnknown216 = 0xd8,
-    OpUnknown217 = 0xd9,
-    OpUnknown218 = 0xda,
-    OpUnknown219 = 0xdb,
-    OpUnknown220 = 0xdc,
-    OpUnknown221 = 0xdd,
-    OpUnknown222 = 0xde,
-    OpUnknown223 = 0xdf,
-    OpUnknown224 = 0xe0,
-    OpUnknown225 = 0xe1,
-    OpUnknown226 = 0xe2,
-    OpUnknown227 = 0xe3,
-    OpUnknown228 = 0xe4,
-    OpUnknown229 = 0xe5,
-    OpUnknown230 = 0xe6,
-    OpUnknown231 = 0xe7,
-    OpUnknown232 = 0xe8,
-    OpUnknown233 = 0xe9,
-    OpUnknown234 = 0xea,
-    OpUnknown235 = 0xeb,
-    OpUnknown236 = 0xec,
-    OpUnknown237 = 0xed,
-    OpUnknown238 = 0xee,
-    OpUnknown239 = 0xef,
-    OpUnknown240 = 0xf0,
-    OpUnknown241 = 0xf1,
-    OpUnknown242 = 0xf2,
-    OpUnknown243 = 0xf3,
-    OpUnknown244 = 0xf4,
-    OpUnknown245 = 0xf5,
-    OpUnknown246 = 0xf6,
-    OpUnknown247 = 0xf7,
-    OpUnknown248 = 0xf8,
-    OpUnknown249 = 0xf9,
-    OpSmallInteger = 0xfa,
-    OpPubKeys = 0xfb,
-    OpUnknown252 = 0xfc,
-    OpPubKeyHash = 0xfd,
-    OpPubKey = 0xfe,
-    OpInvalidOpCode = 0xff,
-}
-
-
-
-
-/**
- * Interface defining the structure of a block header.
- * 
- * @category Consensus
- */
-export interface IHeader {
-    hash: HexString;
-    version: number;
-    parentsByLevel: Array<Array<HexString>>;
-    hashMerkleRoot: HexString;
-    acceptedIdMerkleRoot: HexString;
-    utxoCommitment: HexString;
-    timestamp: bigint;
-    bits: number;
-    nonce: bigint;
-    daaScore: bigint;
-    blueWork: bigint | HexString;
-    blueScore: bigint;
-    pruningPoint: HexString;
-}
-
-
-
-/**
- * Interface defines the structure of a transaction input.
- * 
- * @category Consensus
- */
-export interface ITransactionInput {
-    previousOutpoint: ITransactionOutpoint;
-    signatureScript: HexString;
-    sequence: bigint;
-    sigOpCount: number;
-    utxo?: UtxoEntryReference;
-
-    /** Optional verbose data provided by RPC */
-    verboseData?: ITransactionInputVerboseData;
-}
-
-/**
- * Option transaction input verbose data.
- * 
- * @category Node RPC
- */
-export interface ITransactionInputVerboseData { }
-
-
-
-
-/**
- * Interface defines the structure of a UTXO entry.
- * 
- * @category Consensus
- */
-export interface IUtxoEntry {
-    /** @readonly */
-    address?: Address;
-    /** @readonly */
-    outpoint: ITransactionOutpoint;
-    /** @readonly */
-    amount : bigint;
-    /** @readonly */
-    scriptPublicKey : IScriptPublicKey;
-    /** @readonly */
-    blockDaaScore: bigint;
-    /** @readonly */
-    isCoinbase: boolean;
-}
-
-
-
-
-/**
  * Interface defining the structure of a transaction.
  * 
  * @category Consensus
@@ -562,7 +226,7 @@ export interface ITransactionVerboseData {
  */
 export interface ITransactionOutput {
     value: bigint;
-    scriptPublicKey: IScriptPublicKey;
+    scriptPublicKey: IScriptPublicKey | HexString;
 
     /** Optional verbose data provided by RPC */
     verboseData?: ITransactionOutputVerboseData;
@@ -576,6 +240,44 @@ export interface ITransactionOutput {
 export interface ITransactionOutputVerboseData {
     scriptPublicKeyType : string;
     scriptPublicKeyAddress : string;
+}
+
+
+
+/**
+ * Interface defines the structure of a transaction input.
+ * 
+ * @category Consensus
+ */
+export interface ITransactionInput {
+    previousOutpoint: ITransactionOutpoint;
+    signatureScript?: HexString;
+    sequence: bigint;
+    sigOpCount: number;
+    utxo?: UtxoEntryReference;
+
+    /** Optional verbose data provided by RPC */
+    verboseData?: ITransactionInputVerboseData;
+}
+
+/**
+ * Option transaction input verbose data.
+ * 
+ * @category Node RPC
+ */
+export interface ITransactionInputVerboseData { }
+
+
+
+
+/**
+ * Interface defines the structure of a transaction outpoint (used by transaction input).
+ * 
+ * @category Consensus
+ */
+export interface ITransactionOutpoint {
+    transactionId: HexString;
+    index: number;
 }
 
 
@@ -606,7 +308,7 @@ export interface ISerializableTransactionInput {
     index: number;
     sequence: bigint;
     sigOpCount: number;
-    signatureScript: HexString;
+    signatureScript?: HexString;
     utxo: ISerializableUtxoEntry;
 }
 
@@ -656,27 +358,204 @@ export interface ISerializableTransaction {
 
 
 /**
+ * Interface defining the structure of a block header.
+ * 
+ * @category Consensus
+ */
+export interface IHeader {
+    hash: HexString;
+    version: number;
+    parentsByLevel: Array<Array<HexString>>;
+    hashMerkleRoot: HexString;
+    acceptedIdMerkleRoot: HexString;
+    utxoCommitment: HexString;
+    timestamp: bigint;
+    bits: number;
+    nonce: bigint;
+    daaScore: bigint;
+    blueWork: bigint | HexString;
+    blueScore: bigint;
+    pruningPoint: HexString;
+}
+
+
+
+/**
+ * Interface defines the structure of a UTXO entry.
+ * 
+ * @category Consensus
+ */
+export interface IUtxoEntry {
+    /** @readonly */
+    address?: Address;
+    /** @readonly */
+    outpoint: ITransactionOutpoint;
+    /** @readonly */
+    amount : bigint;
+    /** @readonly */
+    scriptPublicKey : IScriptPublicKey;
+    /** @readonly */
+    blockDaaScore: bigint;
+    /** @readonly */
+    isCoinbase: boolean;
+}
+
+
+
+
+/**
  * Interface defines the structure of a Script Public Key.
  * 
  * @category Consensus
  */
 export interface IScriptPublicKey {
+    version : number;
     script: HexString;
 }
 
 
 
-            /**
-             * Mempool entry.
-             * 
-             * @category Node RPC
-             */
-            export interface IMempoolEntry {
-                fee : bigint;
-                transaction : ITransaction;
-                isOrphan : boolean;
-            }
+        /**
+         * Interface defining the structure of a block.
+         * 
+         * @category Consensus
+         */
+        export interface IBlock {
+            header: IHeader;
+            transactions: ITransaction[];
+            verboseData?: IBlockVerboseData;
+        }
+
+        /**
+         * Interface defining the structure of a block verbose data.
+         * 
+         * @category Node RPC
+         */
+        export interface IBlockVerboseData {
+            hash: HexString;
+            difficulty: number;
+            selectedParentHash: HexString;
+            transactionIds: HexString[];
+            isHeaderOnly: boolean;
+            blueScore: number;
+            childrenHashes: HexString[];
+            mergeSetBluesHashes: HexString[];
+            mergeSetRedsHashes: HexString[];
+            isChainBlock: boolean;
+        }
         
+
+
+/**
+* Return interface for the {@link RpcClient.getFeeEstimateExperimental} RPC method.
+*
+*
+* @category Node RPC
+*/
+    export interface IGetFeeEstimateExperimentalResponse {
+        estimate : IFeeEstimate;
+        verbose? : IFeeEstimateVerboseExperimentalData
+    }
+    
+
+
+/**
+* Argument interface for the {@link RpcClient.getFeeEstimateExperimental} RPC method.
+* Get fee estimate from the node.
+*
+* @category Node RPC
+*/
+    export interface IGetFeeEstimateExperimentalRequest { }
+    
+
+
+    /**
+     * 
+     * 
+     * @category Node RPC
+     */
+    export interface IFeeEstimateVerboseExperimentalData {
+        mempoolReadyTransactionsCount : bigint;
+        mempoolReadyTransactionsTotalMass : bigint;
+        networkMassPerSecond : bigint;
+        nextBlockTemplateFeerateMin : number;
+        nextBlockTemplateFeerateMedian : number;
+        nextBlockTemplateFeerateMax : number;
+    }
+    
+
+
+/**
+* Return interface for the {@link RpcClient.getFeeEstimate} RPC method.
+*
+*
+* @category Node RPC
+*/
+    export interface IGetFeeEstimateResponse {
+        estimate : IFeeEstimate;
+    }
+    
+
+
+/**
+* Argument interface for the {@link RpcClient.getFeeEstimate} RPC method.
+* Get fee estimate from the node.
+*
+* @category Node RPC
+*/
+    export interface IGetFeeEstimateRequest { }
+    
+
+
+    /**
+     * 
+     * 
+     * @category Node RPC
+     */
+    export interface IFeeEstimate {
+        /**
+         * *Top-priority* feerate bucket. Provides an estimation of the feerate required for sub-second DAG inclusion.
+         *
+         * Note: for all buckets, feerate values represent fee/mass of a transaction in `sompi/gram` units.
+         * Given a feerate value recommendation, calculate the required fee by
+         * taking the transaction mass and multiplying it by feerate: `fee = feerate * mass(tx)`
+         */
+
+        priorityBucket : IFeerateBucket;
+        /**
+         * A vector of *normal* priority feerate values. The first value of this vector is guaranteed to exist and
+         * provide an estimation for sub-*minute* DAG inclusion. All other values will have shorter estimation
+         * times than all `low_bucket` values. Therefor by chaining `[priority] | normal | low` and interpolating
+         * between them, one can compose a complete feerate function on the client side. The API makes an effort
+         * to sample enough "interesting" points on the feerate-to-time curve, so that the interpolation is meaningful.
+         */
+
+        normalBucket : IFeerateBucket[];
+        /**
+        * An array of *low* priority feerate values. The first value of this vector is guaranteed to
+        * exist and provide an estimation for sub-*hour* DAG inclusion.
+        */
+        lowBucket : IFeerateBucket[];
+    }
+    
+
+
+    /**
+     * 
+     * 
+     * @category Node RPC
+     */
+    export interface IFeerateBucket {
+        /**
+         * The fee/mass ratio estimated to be required for inclusion time <= estimated_seconds
+         */
+        feerate : number;
+        /**
+         * The estimated inclusion time for a transaction with fee/mass = feerate
+         */
+        estimatedSeconds : number;
+    }
+    
 
 
 /**
@@ -725,6 +604,31 @@ export interface IScriptPublicKey {
     export interface ISubmitTransactionRequest {
         transaction : Transaction,
         allowOrphan? : boolean
+    }
+    
+
+
+/**
+* Return interface for the {@link RpcClient.submitTransactionReplacement} RPC method.
+*
+*
+* @category Node RPC
+*/
+    export interface ISubmitTransactionReplacementResponse {
+        transactionId : HexString;
+        replacedTransaction: Transaction;
+    }
+    
+
+
+/**
+* Argument interface for the {@link RpcClient.submitTransactionReplacement} RPC method.
+* Submit transaction replacement to the node.
+*
+* @category Node RPC
+*/
+    export interface ISubmitTransactionReplacementRequest {
+        transaction : Transaction,
     }
     
 
@@ -840,7 +744,7 @@ export interface IScriptPublicKey {
 * @category Node RPC
 */
     export interface IGetUtxosByAddressesResponse {
-        entries : IUtxoEntry[];
+        entries : UtxoEntryReference[];
     }
     
 
@@ -1026,6 +930,30 @@ export interface IScriptPublicKey {
 */
     export interface IGetDaaScoreTimestampEstimateRequest {
         daaScores : bigint[];
+    }
+    
+
+
+/**
+* Return interface for the {@link RpcClient.getCurrentBlockColor} RPC method.
+*
+*
+* @category Node RPC
+*/
+    export interface IGetCurrentBlockColorResponse {
+        blue: boolean;
+    }
+    
+
+
+/**
+* Argument interface for the {@link RpcClient.getCurrentBlockColor} RPC method.
+*
+*
+* @category Node RPC
+*/
+    export interface IGetCurrentBlockColorRequest {
+        hash: HexString;
     }
     
 
@@ -1328,6 +1256,24 @@ export interface IScriptPublicKey {
 
 
 /**
+* Return interface for the {@link RpcClient.getConnections} RPC method.
+* @category Node RPC
+*/
+    export interface IGetConnectionsResponse {
+        [key: string]: any
+    }
+    
+
+
+/**
+* Argument interface for the {@link RpcClient.getConnections} RPC method.
+* @category Node RPC
+*/
+    export interface IGetConnectionsRequest { }
+    
+
+
+/**
 * Return interface for the {@link RpcClient.getMetrics} RPC method.
 * @category Node RPC
 */
@@ -1504,34 +1450,16 @@ export interface IScriptPublicKey {
 
 
 
-        /**
-         * Interface defining the structure of a block.
-         * 
-         * @category Consensus
-         */
-        export interface IBlock {
-            header: IHeader;
-            transactions: ITransaction[];
-            verboseData?: IBlockVerboseData;
-        }
-
-        /**
-         * Interface defining the structure of a block verbose data.
-         * 
-         * @category Node RPC
-         */
-        export interface IBlockVerboseData {
-            hash: HexString;
-            difficulty: number;
-            selectedParentHash: HexString;
-            transactionIds: HexString[];
-            isHeaderOnly: boolean;
-            blueScore: number;
-            childrenHashes: HexString[];
-            mergeSetBluesHashes: HexString[];
-            mergeSetRedsHashes: HexString[];
-            isChainBlock: boolean;
-        }
+            /**
+             * Mempool entry.
+             * 
+             * @category Node RPC
+             */
+            export interface IMempoolEntry {
+                fee : bigint;
+                transaction : ITransaction;
+                isOrphan : boolean;
+            }
         
 
 
@@ -1560,6 +1488,76 @@ export interface IScriptPublicKey {
  */ 
 export type HexString = string;
 
+
+
+/**
+ * Color range configuration for Hex View.
+ * 
+ * @category General
+ */ 
+export interface IHexViewColor {
+    start: number;
+    end: number;
+    color?: string;
+    background?: string;
+}
+
+/**
+ * Configuration interface for Hex View.
+ * 
+ * @category General
+ */ 
+export interface IHexViewConfig {
+    offset? : number;
+    replacementCharacter? : string;
+    width? : number;
+    colors? : IHexViewColor[];
+}
+
+
+
+        interface RpcClient {
+            /**
+            * @param {RpcEventCallback} callback
+            */
+            addEventListener(callback:RpcEventCallback): void;
+            /**
+            * @param {RpcEventType} event
+            * @param {RpcEventCallback} [callback]
+            */
+            addEventListener<M extends keyof RpcEventMap>(
+                event: M,
+                callback: (eventData: RpcEventMap[M]) => void
+            )
+        }
+
+
+    /**
+     * RPC client configuration options
+     * 
+     * @category Node RPC
+     */
+    export interface IRpcConfig {
+        /**
+         * An instance of the {@link Resolver} class to use for an automatic public node lookup.
+         * If supplying a resolver, the `url` property is ignored.
+         */
+        resolver? : Resolver,
+        /**
+         * URL for wRPC node endpoint
+         */
+        url?: string;
+        /**
+         * RPC encoding: `borsh` or `json` (default is `borsh`)
+         */
+        encoding?: Encoding;
+        /**
+         * Network identifier: `mainnet`, `testnet-10` etc.
+         * `networkId` is required when using a resolver.
+         */
+        networkId?: NetworkId | string;
+    }
+    
 
 
     /**
@@ -1757,50 +1755,6 @@ export type RpcEventCallback = (event: RpcEvent) => void;
 
 
 
-        interface RpcClient {
-            /**
-            * @param {RpcEventCallback} callback
-            */
-            addEventListener(callback:RpcEventCallback): void;
-            /**
-            * @param {RpcEventType} event
-            * @param {RpcEventCallback} [callback]
-            */
-            addEventListener<M extends keyof RpcEventMap>(
-                event: M,
-                callback: (eventData: RpcEventMap[M]) => void
-            )
-        }
-
-
-    /**
-     * RPC client configuration options
-     * 
-     * @category Node RPC
-     */
-    export interface IRpcConfig {
-        /**
-         * An instance of the {@link Resolver} class to use for an automatic public node lookup.
-         * If supplying a resolver, the `url` property is ignored.
-         */
-        resolver? : Resolver,
-        /**
-         * URL for wRPC node endpoint
-         */
-        url?: string;
-        /**
-         * RPC encoding: `borsh` or `json` (default is `borsh`)
-         */
-        encoding?: Encoding;
-        /**
-         * Network identifier: `mainnet`, `testnet-10` etc.
-         * `networkId` is required when using a resolver.
-         */
-        networkId?: NetworkId | string;
-    }
-    
-
-
     /**
      * RPC Resolver connection options
      * 
@@ -1829,6 +1783,20 @@ export type RpcEventCallback = (event: RpcEvent) => void;
          * Optional URLs for one or multiple resolvers.
          */
         urls?: string[];
+        /**
+         * Use strict TLS for RPC connections.
+         * If not set or `false` (default), the resolver will
+         * provide the best available connection regardless of
+         * whether this connection supports TLS or not.
+         * If set to `true`, the resolver will only provide
+         * TLS-enabled connections.
+         * 
+         * This setting is ignored in the browser environment
+         * when the browser navigator location is `https`.
+         * In which case the resolver will always use TLS-enabled
+         * connections.
+         */
+        tls?: boolean;
     }
     
 
@@ -2135,15 +2103,7 @@ export class NodeDescriptor {
 /**
 * The unique identifier of the node.
 */
-  id: string;
-/**
-* Optional name of the node provider.
-*/
-  provider_name?: string;
-/**
-* Optional site URL of the node provider.
-*/
-  provider_url?: string;
+  uid: string;
 /**
 * The URL of the node WebSocket (wRPC URL).
 */
@@ -2223,7 +2183,7 @@ export class Resolver {
 /**
 * List of public Kaspa Resolver URLs.
 */
-  readonly urls: string[];
+  readonly urls: string[] | undefined;
 }
 /**
 *
@@ -2397,6 +2357,14 @@ export class RpcClient {
 */
   getMetrics(request?: IGetMetricsRequest): Promise<IGetMetricsResponse>;
 /**
+* Retrieves current number of network connections
+*@see {@link IGetConnectionsRequest}, {@link IGetConnectionsResponse}
+*@throws `string` on an RPC error or a server-side error.
+* @param {IGetConnectionsRequest | undefined} [request]
+* @returns {Promise<IGetConnectionsResponse>}
+*/
+  getConnections(request?: IGetConnectionsRequest): Promise<IGetConnectionsResponse>;
+/**
 * Retrieves the current sink block, which is the block with
 * the highest cumulative difficulty in the Kaspa BlockDAG.
 * Returned information: Sink block hash, sink block height.
@@ -2527,6 +2495,15 @@ export class RpcClient {
 */
   getBlockTemplate(request: IGetBlockTemplateRequest): Promise<IGetBlockTemplateResponse>;
 /**
+* Checks if block is blue or not.
+* Returned information: Block blueness.
+*@see {@link IGetCurrentBlockColorRequest}, {@link IGetCurrentBlockColorResponse}
+*@throws `string` on an RPC error, a server-side error or when supplying incorrect arguments.
+* @param {IGetCurrentBlockColorRequest} request
+* @returns {Promise<IGetCurrentBlockColorResponse>}
+*/
+  getCurrentBlockColor(request: IGetCurrentBlockColorRequest): Promise<IGetCurrentBlockColorResponse>;
+/**
 * Retrieves the estimated DAA (Difficulty Adjustment Algorithm)
 * score timestamp estimate.
 * Returned information: DAA score timestamp estimate.
@@ -2536,6 +2513,22 @@ export class RpcClient {
 * @returns {Promise<IGetDaaScoreTimestampEstimateResponse>}
 */
   getDaaScoreTimestampEstimate(request: IGetDaaScoreTimestampEstimateRequest): Promise<IGetDaaScoreTimestampEstimateResponse>;
+/**
+* Feerate estimates
+*@see {@link IGetFeeEstimateRequest}, {@link IGetFeeEstimateResponse}
+*@throws `string` on an RPC error, a server-side error or when supplying incorrect arguments.
+* @param {IGetFeeEstimateRequest} request
+* @returns {Promise<IGetFeeEstimateResponse>}
+*/
+  getFeeEstimate(request: IGetFeeEstimateRequest): Promise<IGetFeeEstimateResponse>;
+/**
+* Feerate estimates (experimental)
+*@see {@link IGetFeeEstimateExperimentalRequest}, {@link IGetFeeEstimateExperimentalResponse}
+*@throws `string` on an RPC error, a server-side error or when supplying incorrect arguments.
+* @param {IGetFeeEstimateExperimentalRequest} request
+* @returns {Promise<IGetFeeEstimateExperimentalResponse>}
+*/
+  getFeeEstimateExperimental(request: IGetFeeEstimateExperimentalRequest): Promise<IGetFeeEstimateExperimentalResponse>;
 /**
 * Retrieves the current network configuration.
 * Returned information: Current network configuration.
@@ -2629,13 +2622,22 @@ export class RpcClient {
   submitBlock(request: ISubmitBlockRequest): Promise<ISubmitBlockResponse>;
 /**
 * Submits a transaction to the Kaspa network.
-* Returned information: None.
+* Returned information: Submitted Transaction Id.
 *@see {@link ISubmitTransactionRequest}, {@link ISubmitTransactionResponse}
 *@throws `string` on an RPC error, a server-side error or when supplying incorrect arguments.
 * @param {ISubmitTransactionRequest} request
 * @returns {Promise<ISubmitTransactionResponse>}
 */
   submitTransaction(request: ISubmitTransactionRequest): Promise<ISubmitTransactionResponse>;
+/**
+* Submits an RBF transaction to the Kaspa network.
+* Returned information: Submitted Transaction Id, Transaction that was replaced.
+*@see {@link ISubmitTransactionReplacementRequest}, {@link ISubmitTransactionReplacementResponse}
+*@throws `string` on an RPC error, a server-side error or when supplying incorrect arguments.
+* @param {ISubmitTransactionReplacementRequest} request
+* @returns {Promise<ISubmitTransactionReplacementResponse>}
+*/
+  submitTransactionReplacement(request: ISubmitTransactionReplacementRequest): Promise<ISubmitTransactionReplacementResponse>;
 /**
 * Unbans a previously banned peer, allowing it to connect
 * to the Kaspa node again.
@@ -2870,14 +2872,6 @@ export class RpcClient {
 */
   readonly nodeId: string | undefined;
 /**
-* Optional: public node provider name.
-*/
-  readonly providerName: string | undefined;
-/**
-* Optional: public node provider URL.
-*/
-  readonly providerUrl: string | undefined;
-/**
 * Current rpc resolver
 */
   readonly resolver: Resolver | undefined;
@@ -2885,95 +2879,6 @@ export class RpcClient {
 * The current URL of the RPC client.
 */
   readonly url: string | undefined;
-}
-/**
-*
-*  ScriptBuilder provides a facility for building custom scripts. It allows
-* you to push opcodes, ints, and data while respecting canonical encoding. In
-* general it does not ensure the script will execute correctly, however any
-* data pushes which would exceed the maximum allowed script engine limits and
-* are therefore guaranteed not to execute will not be pushed and will result in
-* the Script function returning an error.
-*
-* @see {@link Opcode}
-* @category Consensus
-*/
-export class ScriptBuilder {
-/**
-** Return copy of self without private attributes.
-*/
-  toJSON(): Object;
-/**
-* Return stringified version of self.
-*/
-  toString(): string;
-  free(): void;
-/**
-*/
-  constructor();
-/**
-* Get script bytes represented by a hex string.
-* @returns {HexString}
-*/
-  script(): HexString;
-/**
-* Drains (empties) the script builder, returning the
-* script bytes represented by a hex string.
-* @returns {HexString}
-*/
-  drain(): HexString;
-/**
-* @param {HexString | Uint8Array} data
-* @returns {number}
-*/
-  static canonicalDataSize(data: HexString | Uint8Array): number;
-/**
-* Pushes the passed opcode to the end of the script. The script will not
-* be modified if pushing the opcode would cause the script to exceed the
-* maximum allowed script engine size.
-* @param {number} op
-* @returns {ScriptBuilder}
-*/
-  addOp(op: number): ScriptBuilder;
-/**
-* Adds the passed opcodes to the end of the script.
-* Supplied opcodes can be represented as a `Uint8Array` or a `HexString`.
-* @param {any} opcodes
-* @returns {ScriptBuilder}
-*/
-  addOps(opcodes: any): ScriptBuilder;
-/**
-* AddData pushes the passed data to the end of the script. It automatically
-* chooses canonical opcodes depending on the length of the data.
-*
-* A zero length buffer will lead to a push of empty data onto the stack (Op0 = OpFalse)
-* and any push of data greater than [`MAX_SCRIPT_ELEMENT_SIZE`](kaspa_txscript::MAX_SCRIPT_ELEMENT_SIZE) will not modify
-* the script since that is not allowed by the script engine.
-*
-* Also, the script will not be modified if pushing the data would cause the script to
-* exceed the maximum allowed script engine size [`MAX_SCRIPTS_SIZE`](kaspa_txscript::MAX_SCRIPTS_SIZE).
-* @param {HexString | Uint8Array} data
-* @returns {ScriptBuilder}
-*/
-  addData(data: HexString | Uint8Array): ScriptBuilder;
-/**
-* @param {bigint} value
-* @returns {ScriptBuilder}
-*/
-  addI64(value: bigint): ScriptBuilder;
-/**
-* @param {bigint} lock_time
-* @returns {ScriptBuilder}
-*/
-  addLockTime(lock_time: bigint): ScriptBuilder;
-/**
-* @param {bigint} sequence
-* @returns {ScriptBuilder}
-*/
-  addSequence(sequence: bigint): ScriptBuilder;
-/**
-*/
-  readonly data: HexString;
 }
 /**
 * Represents a Kaspad ScriptPublicKey
@@ -3024,12 +2929,37 @@ export class Transaction {
   toString(): string;
   free(): void;
 /**
+* Determines whether or not a transaction is a coinbase transaction. A coinbase
+* transaction is a special transaction created by miners that distributes fees and block subsidy
+* to the previous blocks' miners, and specifies the script_pub_key that will be used to pay the current
+* miner in future blocks.
+* @returns {boolean}
+*/
+  is_coinbase(): boolean;
+/**
+* Recompute and finalize the tx id based on updated tx fields
+* @returns {Hash}
+*/
+  finalize(): Hash;
+/**
+* @param {ITransaction | Transaction} js_value
+*/
+  constructor(js_value: ITransaction | Transaction);
+/**
+* Returns a list of unique addresses used by transaction inputs.
+* This method can be used to determine addresses used by transaction inputs
+* in order to select private keys needed for transaction signing.
+* @param {NetworkType | NetworkId | string} network_type
+* @returns {Address[]}
+*/
+  addresses(network_type: NetworkType | NetworkId | string): Address[];
+/**
 * Serializes the transaction to a pure JavaScript Object.
 * The schema of the JavaScript object is defined by {@link ISerializableTransaction}.
 * @see {@link ISerializableTransaction}
-* @returns {ITransaction}
+* @returns {ISerializableTransaction}
 */
-  serializeToObject(): ITransaction;
+  serializeToObject(): ISerializableTransaction;
 /**
 * Serializes the transaction to a JSON string.
 * The schema of the JSON is defined by {@link ISerializableTransaction}.
@@ -3060,31 +2990,6 @@ export class Transaction {
 */
   static deserializeFromSafeJSON(json: string): Transaction;
 /**
-* Determines whether or not a transaction is a coinbase transaction. A coinbase
-* transaction is a special transaction created by miners that distributes fees and block subsidy
-* to the previous blocks' miners, and specifies the script_pub_key that will be used to pay the current
-* miner in future blocks.
-* @returns {boolean}
-*/
-  is_coinbase(): boolean;
-/**
-* Recompute and finalize the tx id based on updated tx fields
-* @returns {Hash}
-*/
-  finalize(): Hash;
-/**
-* @param {ITransaction} js_value
-*/
-  constructor(js_value: ITransaction);
-/**
-* Returns a list of unique addresses used by transaction inputs.
-* This method can be used to determine addresses used by transaction inputs
-* in order to select private keys needed for transaction signing.
-* @param {NetworkType | NetworkId | string} network_type
-* @returns {Address[]}
-*/
-  addresses(network_type: NetworkType | NetworkId | string): Address[];
-/**
 */
   gas: bigint;
 /**
@@ -3093,13 +2998,13 @@ export class Transaction {
   readonly id: string;
 /**
 */
-  inputs: any;
+  inputs: (ITransactionInput | TransactionInput)[];
 /**
 */
-  lock_time: bigint;
+  lockTime: bigint;
 /**
 */
-  outputs: any;
+  outputs: (ITransactionOutput | TransactionOutput)[];
 /**
 */
   payload: any;
@@ -3125,9 +3030,9 @@ export class TransactionInput {
   toString(): string;
   free(): void;
 /**
-* @param {ITransactionInput} value
+* @param {ITransactionInput | TransactionInput} value
 */
-  constructor(value: ITransactionInput);
+  constructor(value: ITransactionInput | TransactionInput);
 /**
 */
   previousOutpoint: any;
@@ -3360,13 +3265,8 @@ export class UtxoEntryReference {
 */
   toString(): string;
 /**
-* @returns {string}
 */
-  getTransactionId(): string;
-/**
-* @returns {string}
-*/
-  getId(): string;
+  readonly address: Address | undefined;
 /**
 */
   readonly amount: bigint;
@@ -3379,13 +3279,19 @@ export class UtxoEntryReference {
 /**
 */
   readonly isCoinbase: boolean;
+/**
+*/
+  readonly outpoint: TransactionOutpoint;
+/**
+*/
+  readonly scriptPublicKey: ScriptPublicKey;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly __wbg_address_free: (a: number) => void;
+  readonly __wbg_address_free: (a: number, b: number) => void;
   readonly address_constructor: (a: number, b: number) => number;
   readonly address_validate: (a: number, b: number) => number;
   readonly address_toString: (a: number, b: number) => void;
@@ -3394,22 +3300,62 @@ export interface InitOutput {
   readonly address_set_setPrefix: (a: number, b: number, c: number) => void;
   readonly address_payload: (a: number, b: number) => void;
   readonly address_short: (a: number, b: number, c: number) => void;
-  readonly __wbg_transactionoutpoint_free: (a: number) => void;
+  readonly __wbg_transaction_free: (a: number, b: number) => void;
+  readonly transaction_is_coinbase: (a: number) => number;
+  readonly transaction_finalize: (a: number, b: number) => void;
+  readonly transaction_id: (a: number, b: number) => void;
+  readonly transaction_constructor: (a: number, b: number) => void;
+  readonly transaction_get_inputs_as_js_array: (a: number) => number;
+  readonly transaction_addresses: (a: number, b: number, c: number) => void;
+  readonly transaction_set_inputs_from_js_array: (a: number, b: number) => void;
+  readonly transaction_get_outputs_as_js_array: (a: number) => number;
+  readonly transaction_set_outputs_from_js_array: (a: number, b: number) => void;
+  readonly transaction_version: (a: number) => number;
+  readonly transaction_set_version: (a: number, b: number) => void;
+  readonly transaction_lockTime: (a: number) => number;
+  readonly transaction_set_lockTime: (a: number, b: number) => void;
+  readonly transaction_gas: (a: number) => number;
+  readonly transaction_set_gas: (a: number, b: number) => void;
+  readonly transaction_get_subnetwork_id_as_hex: (a: number, b: number) => void;
+  readonly transaction_set_subnetwork_id_from_js_value: (a: number, b: number) => void;
+  readonly transaction_get_payload_as_hex_string: (a: number, b: number) => void;
+  readonly transaction_set_payload_from_js_value: (a: number, b: number) => void;
+  readonly transaction_serializeToObject: (a: number, b: number) => void;
+  readonly transaction_serializeToJSON: (a: number, b: number) => void;
+  readonly transaction_serializeToSafeJSON: (a: number, b: number) => void;
+  readonly transaction_deserializeFromObject: (a: number, b: number) => void;
+  readonly transaction_deserializeFromJSON: (a: number, b: number, c: number) => void;
+  readonly transaction_deserializeFromSafeJSON: (a: number, b: number, c: number) => void;
+  readonly transactionsigninghashecdsa_new: () => number;
+  readonly transactionsigninghashecdsa_update: (a: number, b: number, c: number) => void;
+  readonly transactionsigninghashecdsa_finalize: (a: number, b: number) => void;
+  readonly __wbg_transactionsigninghashecdsa_free: (a: number, b: number) => void;
+  readonly transactionsigninghash_new: () => number;
+  readonly transactionsigninghash_update: (a: number, b: number, c: number) => void;
+  readonly transactionsigninghash_finalize: (a: number, b: number) => void;
+  readonly __wbg_transactionsigninghash_free: (a: number, b: number) => void;
+  readonly __wbg_transactionoutput_free: (a: number, b: number) => void;
+  readonly transactionoutput_ctor: (a: number, b: number) => number;
+  readonly transactionoutput_value: (a: number) => number;
+  readonly transactionoutput_set_value: (a: number, b: number) => void;
+  readonly transactionoutput_scriptPublicKey: (a: number) => number;
+  readonly transactionoutput_set_scriptPublicKey: (a: number, b: number) => void;
+  readonly __wbg_transactioninput_free: (a: number, b: number) => void;
+  readonly transactioninput_constructor: (a: number, b: number) => void;
+  readonly transactioninput_get_previous_outpoint: (a: number) => number;
+  readonly transactioninput_set_previous_outpoint: (a: number, b: number, c: number) => void;
+  readonly transactioninput_get_signature_script_as_hex: (a: number, b: number) => void;
+  readonly transactioninput_set_signature_script_from_js_value: (a: number, b: number, c: number) => void;
+  readonly transactioninput_get_sequence: (a: number) => number;
+  readonly transactioninput_set_sequence: (a: number, b: number) => void;
+  readonly transactioninput_get_sig_op_count: (a: number) => number;
+  readonly transactioninput_set_sig_op_count: (a: number, b: number) => void;
+  readonly transactioninput_get_utxo: (a: number) => number;
+  readonly __wbg_transactionoutpoint_free: (a: number, b: number) => void;
   readonly transactionoutpoint_ctor: (a: number, b: number) => number;
   readonly transactionoutpoint_getId: (a: number, b: number) => void;
   readonly transactionoutpoint_transactionId: (a: number, b: number) => void;
   readonly transactionoutpoint_index: (a: number) => number;
-  readonly scriptbuilder_new: () => number;
-  readonly scriptbuilder_data: (a: number) => number;
-  readonly scriptbuilder_script: (a: number) => number;
-  readonly scriptbuilder_drain: (a: number) => number;
-  readonly scriptbuilder_canonicalDataSize: (a: number, b: number) => void;
-  readonly scriptbuilder_addOp: (a: number, b: number, c: number) => void;
-  readonly scriptbuilder_addOps: (a: number, b: number, c: number) => void;
-  readonly scriptbuilder_addData: (a: number, b: number, c: number) => void;
-  readonly scriptbuilder_addI64: (a: number, b: number, c: number) => void;
-  readonly scriptbuilder_addLockTime: (a: number, b: number, c: number) => void;
-  readonly __wbg_scriptbuilder_free: (a: number) => void;
   readonly header_constructor: (a: number, b: number) => void;
   readonly header_finalize: (a: number, b: number) => void;
   readonly header_asJSON: (a: number, b: number) => void;
@@ -3439,20 +3385,8 @@ export interface InitOutput {
   readonly header_blue_work: (a: number) => number;
   readonly header_getBlueWorkAsHex: (a: number, b: number) => void;
   readonly header_set_blue_work_from_js_value: (a: number, b: number) => void;
-  readonly __wbg_header_free: (a: number) => void;
-  readonly scriptbuilder_addSequence: (a: number, b: number, c: number) => void;
-  readonly transactioninput_constructor: (a: number, b: number) => void;
-  readonly transactioninput_get_previous_outpoint: (a: number) => number;
-  readonly transactioninput_set_previous_outpoint: (a: number, b: number, c: number) => void;
-  readonly transactioninput_get_signature_script_as_hex: (a: number, b: number) => void;
-  readonly transactioninput_set_signature_script_from_js_value: (a: number, b: number, c: number) => void;
-  readonly transactioninput_get_sequence: (a: number) => number;
-  readonly transactioninput_set_sequence: (a: number, b: number) => void;
-  readonly transactioninput_get_sig_op_count: (a: number) => number;
-  readonly transactioninput_set_sig_op_count: (a: number, b: number) => void;
-  readonly transactioninput_get_utxo: (a: number) => number;
-  readonly __wbg_transactioninput_free: (a: number) => void;
-  readonly __wbg_utxoentry_free: (a: number) => void;
+  readonly __wbg_header_free: (a: number, b: number) => void;
+  readonly __wbg_utxoentry_free: (a: number, b: number) => void;
   readonly __wbg_get_utxoentry_address: (a: number) => number;
   readonly __wbg_set_utxoentry_address: (a: number, b: number) => void;
   readonly __wbg_get_utxoentry_outpoint: (a: number) => number;
@@ -3466,61 +3400,29 @@ export interface InitOutput {
   readonly __wbg_get_utxoentry_isCoinbase: (a: number) => number;
   readonly __wbg_set_utxoentry_isCoinbase: (a: number, b: number) => void;
   readonly utxoentry_toString: (a: number, b: number) => void;
-  readonly __wbg_utxoentryreference_free: (a: number) => void;
+  readonly __wbg_utxoentryreference_free: (a: number, b: number) => void;
   readonly utxoentryreference_toString: (a: number, b: number) => void;
   readonly utxoentryreference_entry: (a: number) => number;
-  readonly utxoentryreference_getTransactionId: (a: number, b: number) => void;
-  readonly utxoentryreference_getId: (a: number, b: number) => void;
+  readonly utxoentryreference_outpoint: (a: number) => number;
+  readonly utxoentryreference_address: (a: number) => number;
   readonly utxoentryreference_amount: (a: number) => number;
   readonly utxoentryreference_isCoinbase: (a: number) => number;
   readonly utxoentryreference_blockDaaScore: (a: number) => number;
-  readonly __wbg_utxoentries_free: (a: number) => void;
+  readonly utxoentryreference_scriptPublicKey: (a: number) => number;
+  readonly __wbg_utxoentries_free: (a: number, b: number) => void;
   readonly utxoentries_js_ctor: (a: number, b: number) => void;
   readonly utxoentries_get_items_as_js_array: (a: number) => number;
   readonly utxoentries_set_items_from_js_array: (a: number, b: number) => void;
   readonly utxoentries_sort: (a: number) => void;
   readonly utxoentries_amount: (a: number) => number;
-  readonly transaction_serializeToObject: (a: number, b: number) => void;
-  readonly transaction_serializeToJSON: (a: number, b: number) => void;
-  readonly transaction_serializeToSafeJSON: (a: number, b: number) => void;
-  readonly transaction_deserializeFromObject: (a: number, b: number) => void;
-  readonly transaction_deserializeFromJSON: (a: number, b: number, c: number) => void;
-  readonly transaction_deserializeFromSafeJSON: (a: number, b: number, c: number) => void;
-  readonly transaction_is_coinbase: (a: number) => number;
-  readonly transaction_finalize: (a: number, b: number) => void;
-  readonly transaction_id: (a: number, b: number) => void;
-  readonly transaction_constructor: (a: number, b: number) => void;
-  readonly transaction_get_inputs_as_js_array: (a: number) => number;
-  readonly transaction_addresses: (a: number, b: number, c: number) => void;
-  readonly transaction_set_inputs_from_js_array: (a: number, b: number) => void;
-  readonly transaction_get_outputs_as_js_array: (a: number) => number;
-  readonly transaction_set_outputs_from_js_array: (a: number, b: number) => void;
-  readonly transaction_version: (a: number) => number;
-  readonly transaction_set_version: (a: number, b: number) => void;
-  readonly transaction_lock_time: (a: number) => number;
-  readonly transaction_set_lock_time: (a: number, b: number) => void;
-  readonly transaction_gas: (a: number) => number;
-  readonly transaction_set_gas: (a: number, b: number) => void;
-  readonly transaction_get_subnetwork_id_as_hex: (a: number, b: number) => void;
-  readonly transaction_set_subnetwork_id_from_js_value: (a: number, b: number) => void;
-  readonly transaction_get_payload_as_hex_string: (a: number, b: number) => void;
-  readonly transaction_set_payload_from_js_value: (a: number, b: number) => void;
-  readonly __wbg_transaction_free: (a: number) => void;
-  readonly __wbg_transactionoutput_free: (a: number) => void;
-  readonly transactionoutput_ctor: (a: number, b: number) => number;
-  readonly transactionoutput_value: (a: number) => number;
-  readonly transactionoutput_set_value: (a: number, b: number) => void;
-  readonly transactionoutput_scriptPublicKey: (a: number) => number;
-  readonly transactionoutput_set_scriptPublicKey: (a: number, b: number) => void;
-  readonly transactionsigninghashecdsa_new: () => number;
-  readonly transactionsigninghashecdsa_update: (a: number, b: number, c: number) => void;
-  readonly transactionsigninghashecdsa_finalize: (a: number, b: number) => void;
-  readonly __wbg_transactionsigninghashecdsa_free: (a: number) => void;
-  readonly transactionsigninghash_new: () => number;
-  readonly transactionsigninghash_update: (a: number, b: number, c: number) => void;
-  readonly transactionsigninghash_finalize: (a: number, b: number) => void;
-  readonly __wbg_transactionsigninghash_free: (a: number) => void;
-  readonly __wbg_networkid_free: (a: number) => void;
+  readonly isScriptPayToScriptHash: (a: number, b: number) => void;
+  readonly isScriptPayToPubkeyECDSA: (a: number, b: number) => void;
+  readonly isScriptPayToPubkey: (a: number, b: number) => void;
+  readonly addressFromScriptPublicKey: (a: number, b: number, c: number) => void;
+  readonly payToScriptHashSignatureScript: (a: number, b: number, c: number) => void;
+  readonly payToScriptHashScript: (a: number, b: number) => void;
+  readonly payToAddressScript: (a: number, b: number) => void;
+  readonly __wbg_networkid_free: (a: number, b: number) => void;
   readonly __wbg_get_networkid_type: (a: number) => number;
   readonly __wbg_set_networkid_type: (a: number, b: number) => void;
   readonly __wbg_get_networkid_suffix: (a: number, b: number) => void;
@@ -3529,7 +3431,7 @@ export interface InitOutput {
   readonly networkid_id: (a: number, b: number) => void;
   readonly networkid_addressPrefix: (a: number, b: number) => void;
   readonly networkid_toString: (a: number, b: number) => void;
-  readonly __wbg_transactionutxoentry_free: (a: number) => void;
+  readonly __wbg_transactionutxoentry_free: (a: number, b: number) => void;
   readonly __wbg_get_transactionutxoentry_amount: (a: number) => number;
   readonly __wbg_set_transactionutxoentry_amount: (a: number, b: number) => void;
   readonly __wbg_get_transactionutxoentry_scriptPublicKey: (a: number) => number;
@@ -3538,25 +3440,21 @@ export interface InitOutput {
   readonly __wbg_set_transactionutxoentry_blockDaaScore: (a: number, b: number) => void;
   readonly __wbg_get_transactionutxoentry_isCoinbase: (a: number) => number;
   readonly __wbg_set_transactionutxoentry_isCoinbase: (a: number, b: number) => void;
-  readonly __wbg_sighashtype_free: (a: number) => void;
-  readonly __wbg_scriptpublickey_free: (a: number) => void;
+  readonly __wbg_scriptpublickey_free: (a: number, b: number) => void;
   readonly __wbg_get_scriptpublickey_version: (a: number) => number;
   readonly __wbg_set_scriptpublickey_version: (a: number, b: number) => void;
   readonly scriptpublickey_constructor: (a: number, b: number, c: number) => void;
   readonly scriptpublickey_script_as_hex: (a: number, b: number) => void;
-  readonly __wbg_hash_free: (a: number) => void;
+  readonly __wbg_sighashtype_free: (a: number, b: number) => void;
+  readonly __wbg_hash_free: (a: number, b: number) => void;
   readonly hash_constructor: (a: number, b: number) => number;
   readonly hash_toString: (a: number, b: number) => void;
   readonly version: (a: number) => void;
-  readonly __wbg_nodedescriptor_free: (a: number) => void;
-  readonly __wbg_get_nodedescriptor_id: (a: number, b: number) => void;
-  readonly __wbg_set_nodedescriptor_id: (a: number, b: number, c: number) => void;
+  readonly __wbg_nodedescriptor_free: (a: number, b: number) => void;
+  readonly __wbg_get_nodedescriptor_uid: (a: number, b: number) => void;
+  readonly __wbg_set_nodedescriptor_uid: (a: number, b: number, c: number) => void;
   readonly __wbg_get_nodedescriptor_url: (a: number, b: number) => void;
   readonly __wbg_set_nodedescriptor_url: (a: number, b: number, c: number) => void;
-  readonly __wbg_get_nodedescriptor_provider_name: (a: number, b: number) => void;
-  readonly __wbg_set_nodedescriptor_provider_name: (a: number, b: number, c: number) => void;
-  readonly __wbg_get_nodedescriptor_provider_url: (a: number, b: number) => void;
-  readonly __wbg_set_nodedescriptor_provider_url: (a: number, b: number, c: number) => void;
   readonly rpcclient_getBlockCount: (a: number, b: number) => number;
   readonly rpcclient_getBlockDagInfo: (a: number, b: number) => number;
   readonly rpcclient_getCoinSupply: (a: number, b: number) => number;
@@ -3564,6 +3462,7 @@ export interface InitOutput {
   readonly rpcclient_getInfo: (a: number, b: number) => number;
   readonly rpcclient_getPeerAddresses: (a: number, b: number) => number;
   readonly rpcclient_getMetrics: (a: number, b: number) => number;
+  readonly rpcclient_getConnections: (a: number, b: number) => number;
   readonly rpcclient_getSink: (a: number, b: number) => number;
   readonly rpcclient_getSinkBlueScore: (a: number, b: number) => number;
   readonly rpcclient_ping: (a: number, b: number) => number;
@@ -3578,7 +3477,10 @@ export interface InitOutput {
   readonly rpcclient_getBlock: (a: number, b: number) => number;
   readonly rpcclient_getBlocks: (a: number, b: number) => number;
   readonly rpcclient_getBlockTemplate: (a: number, b: number) => number;
+  readonly rpcclient_getCurrentBlockColor: (a: number, b: number) => number;
   readonly rpcclient_getDaaScoreTimestampEstimate: (a: number, b: number) => number;
+  readonly rpcclient_getFeeEstimate: (a: number, b: number) => number;
+  readonly rpcclient_getFeeEstimateExperimental: (a: number, b: number) => number;
   readonly rpcclient_getCurrentNetwork: (a: number, b: number) => number;
   readonly rpcclient_getHeaders: (a: number, b: number) => number;
   readonly rpcclient_getMempoolEntries: (a: number, b: number) => number;
@@ -3590,6 +3492,7 @@ export interface InitOutput {
   readonly rpcclient_resolveFinalityConflict: (a: number, b: number) => number;
   readonly rpcclient_submitBlock: (a: number, b: number) => number;
   readonly rpcclient_submitTransaction: (a: number, b: number) => number;
+  readonly rpcclient_submitTransactionReplacement: (a: number, b: number) => number;
   readonly rpcclient_unban: (a: number, b: number) => number;
   readonly rpcclient_subscribeBlockAdded: (a: number) => number;
   readonly rpcclient_unsubscribeBlockAdded: (a: number) => number;
@@ -3619,8 +3522,6 @@ export interface InitOutput {
   readonly rpcclient_isConnected: (a: number) => number;
   readonly rpcclient_encoding: (a: number, b: number) => void;
   readonly rpcclient_nodeId: (a: number, b: number) => void;
-  readonly rpcclient_providerName: (a: number, b: number) => void;
-  readonly rpcclient_providerUrl: (a: number, b: number) => void;
   readonly rpcclient_connect: (a: number, b: number) => number;
   readonly rpcclient_disconnect: (a: number) => number;
   readonly rpcclient_start: (a: number) => number;
@@ -3630,24 +3531,24 @@ export interface InitOutput {
   readonly rpcclient_removeEventListener: (a: number, b: number, c: number, d: number) => void;
   readonly rpcclient_clearEventListener: (a: number, b: number, c: number) => void;
   readonly rpcclient_removeAllEventListeners: (a: number, b: number) => void;
-  readonly __wbg_rpcclient_free: (a: number) => void;
+  readonly __wbg_rpcclient_free: (a: number, b: number) => void;
   readonly resolver_urls: (a: number) => number;
   readonly resolver_getNode: (a: number, b: number, c: number) => number;
   readonly resolver_getUrl: (a: number, b: number, c: number) => number;
   readonly resolver_connect: (a: number, b: number) => number;
   readonly resolver_ctor: (a: number, b: number) => void;
-  readonly __wbg_resolver_free: (a: number) => void;
-  readonly rustsecp256k1_v0_9_2_context_create: (a: number) => number;
-  readonly rustsecp256k1_v0_9_2_context_destroy: (a: number) => void;
-  readonly rustsecp256k1_v0_9_2_default_illegal_callback_fn: (a: number, b: number) => void;
-  readonly rustsecp256k1_v0_9_2_default_error_callback_fn: (a: number, b: number) => void;
-  readonly __wbg_abortable_free: (a: number) => void;
+  readonly __wbg_resolver_free: (a: number, b: number) => void;
+  readonly rustsecp256k1_v0_10_0_context_create: (a: number) => number;
+  readonly rustsecp256k1_v0_10_0_context_destroy: (a: number) => void;
+  readonly rustsecp256k1_v0_10_0_default_illegal_callback_fn: (a: number, b: number) => void;
+  readonly rustsecp256k1_v0_10_0_default_error_callback_fn: (a: number, b: number) => void;
+  readonly __wbg_aborted_free: (a: number, b: number) => void;
+  readonly __wbg_abortable_free: (a: number, b: number) => void;
   readonly abortable_new: () => number;
   readonly abortable_isAborted: (a: number) => number;
   readonly abortable_abort: (a: number) => void;
   readonly abortable_check: (a: number, b: number) => void;
   readonly abortable_reset: (a: number) => void;
-  readonly __wbg_aborted_free: (a: number) => void;
   readonly setLogLevel: (a: number) => void;
   readonly initWASM32Bindings: (a: number, b: number) => void;
   readonly defer: () => number;
@@ -3657,16 +3558,18 @@ export interface InitOutput {
   readonly __wbindgen_export_0: (a: number, b: number) => number;
   readonly __wbindgen_export_1: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_export_2: WebAssembly.Table;
-  readonly __wbindgen_export_3: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_export_4: (a: number, b: number) => void;
+  readonly __wbindgen_export_3: (a: number, b: number) => void;
+  readonly __wbindgen_export_4: (a: number, b: number, c: number) => void;
   readonly __wbindgen_export_5: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_export_6: (a: number, b: number) => void;
-  readonly __wbindgen_export_7: (a: number, b: number, c: number) => void;
+  readonly __wbindgen_export_6: (a: number, b: number, c: number) => void;
+  readonly __wbindgen_export_7: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_export_8: (a: number, b: number) => void;
-  readonly __wbindgen_export_9: (a: number) => void;
-  readonly __wbindgen_export_10: (a: number, b: number, c: number, d: number) => void;
+  readonly __wbindgen_export_9: (a: number, b: number, c: number) => void;
+  readonly __wbindgen_export_10: (a: number, b: number) => void;
+  readonly __wbindgen_export_11: (a: number) => void;
+  readonly __wbindgen_export_12: (a: number, b: number, c: number, d: number) => void;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
-  readonly __wbindgen_export_11: (a: number, b: number, c: number) => void;
+  readonly __wbindgen_export_13: (a: number, b: number, c: number) => void;
 }
 
 export type SyncInitInput = BufferSource | WebAssembly.Module;
@@ -3674,18 +3577,18 @@ export type SyncInitInput = BufferSource | WebAssembly.Module;
 * Instantiates the given `module`, which can either be bytes or
 * a precompiled `WebAssembly.Module`.
 *
-* @param {SyncInitInput} module
+* @param {{ module: SyncInitInput }} module - Passing `SyncInitInput` directly is deprecated.
 *
 * @returns {InitOutput}
 */
-export function initSync(module: SyncInitInput): InitOutput;
+export function initSync(module: { module: SyncInitInput } | SyncInitInput): InitOutput;
 
 /**
 * If `module_or_path` is {RequestInfo} or {URL}, makes a request and
 * for everything else, calls `WebAssembly.instantiate` directly.
 *
-* @param {InitInput | Promise<InitInput>} module_or_path
+* @param {{ module_or_path: InitInput | Promise<InitInput> }} module_or_path - Passing `InitInput` directly is deprecated.
 *
 * @returns {Promise<InitOutput>}
 */
-export default function __wbg_init (module_or_path?: InitInput | Promise<InitInput>): Promise<InitOutput>;
+export default function __wbg_init (module_or_path?: { module_or_path: InitInput | Promise<InitInput> } | InitInput | Promise<InitInput>): Promise<InitOutput>;
