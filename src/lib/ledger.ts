@@ -7,6 +7,9 @@ import { publicKeyToAddress, addressToScriptPublicKey } from './kaspa-util';
 import { TransactionInput, TransactionOutput, Transaction } from 'hw-app-kaspa';
 import Kaspa from 'hw-app-kaspa';
 
+import * as kaspa from './kaspa-rpc';
+import kaspaWasmUrl from './kaspa-rpc/kaspa_bg.wasm';
+
 axiosRetry(axios, { retries: 3 });
 
 let transportState = {
@@ -18,11 +21,51 @@ let transportState = {
     type: null,
 };
 
-export async function fetchTransaction(transactionId: string) {
-    const { data: txData } = await axios.get(`https://api.kaspa.org/transactions/${transactionId}`);
+const kaspaState = {
+    rpc: null,
+    sdk: new Promise((resolve, reject) => {
+        kaspa
+            .default(kaspaWasmUrl)
+            .then(() => {
+                console.info('SDK version', kaspa.version());
+                resolve(kaspa);
+            })
+            .catch((e) => {
+                console.error(e);
+                reject(e);
+            });
+    }),
+    addresses: new Set<string>(),
+};
 
-    return txData;
+/**
+ * Lazy initializes the RPC client
+ * @returns Promise<kaspa.RpcClient>
+ */
+async function rpc(): Promise<kaspa.RpcClient> {
+    if (!kaspaState.rpc) {
+        kaspaState.rpc = new Promise(async (resolve) => {
+            await kaspaState.sdk;
+
+            const client = new kaspa.RpcClient({
+                resolver: new kaspa.Resolver(),
+                networkId: 'mainnet',
+            });
+
+            await client.connect();
+
+            resolve(client);
+        });
+    }
+
+    return kaspaState.rpc;
 }
+
+// export async function fetchTransaction(transactionId: string) {
+//     const { data: txData } = await axios.get(`https://api.kaspa.org/transactions/${transactionId}`);
+
+//     return txData;
+// }
 
 export type UtxoSelectionResult = {
     hasEnough: boolean;
@@ -37,12 +80,14 @@ export type UtxoSelectionResult = {
  * @param amount - the amount to select for, in SOMPI
  * @param utxosInput - the utxos array to select from
  * @param feeIncluded - whether or not fees are included in the amount passed
+ * @param requiredFee - the minimum amount of fee to spend
  * @returns [has_enough, utxos, fee, total]
  */
 export function selectUtxos(
     amount: number,
     utxosInput: UtxoInfo[],
     feeIncluded: boolean = false,
+    requiredFee: number = 0,
 ): UtxoSelectionResult {
     // Fee does not have to be accurate. It just has to be over the absolute minimum.
     // https://kaspa-mdbook.aspectron.com/transactions/constraints/fees.html
@@ -66,15 +111,18 @@ export function selectUtxos(
     // 2. The signature script len is 66 (always true schnorr addresses)
     // 3. Payload is zero hash payload
     // 4. We're at mainnet
-    let fee = 239 + 690;
+    let minimumFee = 239 + 690;
+    let fee = 0;
     let total = 0;
 
     const selected = [];
 
     // UTXOs is sorted descending:
     for (const utxo of utxosInput) {
-        fee += 1118; // 1118 is described here https://kaspa-mdbook.aspectron.com/transactions/constraints/mass.html#input-mass
+        minimumFee += 1118; // 1118 is described here https://kaspa-mdbook.aspectron.com/transactions/constraints/mass.html#input-mass
         total += utxo.amount;
+
+        fee = Math.max(minimumFee, requiredFee);
 
         selected.push(utxo);
 
@@ -129,26 +177,43 @@ export type UtxoInfo = {
     amount: number;
 };
 
-export async function fetchAddressBalance(address) {
-    const { data: balanceData } = await axios.get(
-        `https://api.kaspa.org/addresses/${address}/balance`,
-    );
+export async function fetchAddressBalance(address: string) {
+    if (!address) {
+        throw new Error('Address must be passed to fetch balance');
+    }
 
-    return balanceData;
+    const client = await rpc();
+    const result = await client.getBalanceByAddress({ address });
+
+    return result;
+}
+
+export async function fetchAddressUtxos(address) {
+    if (!address) {
+        throw new Error('Address must be passed to fetch utxos');
+    }
+
+    const client = await rpc();
+    const result = await client.getUtxosByAddresses({ addresses: [address] });
+
+    return result.entries;
 }
 
 export async function fetchAddressDetails(address, derivationPath) {
-    const balanceData = await fetchAddressBalance(address);
-    const { data: utxoData } = await axios.get(`https://api.kaspa.org/addresses/${address}/utxos`);
+    const [balanceData, utxoData] = await Promise.all([
+        fetchAddressBalance(address),
+        fetchAddressUtxos(address),
+    ]);
 
     // UTXOs sorted by decreasing amount. Using the biggest UTXOs first minimizes number of utxos needed
     // in a transaction
     const utxos: UtxoInfo[] = utxoData
         .map((utxo) => {
+            console.info('utxo', utxo.entry);
             return {
-                prevTxId: utxo.outpoint.transactionId,
-                outpointIndex: utxo.outpoint.index,
-                amount: Number(utxo.utxoEntry.amount),
+                prevTxId: utxo.entry.outpoint.transactionId,
+                outpointIndex: utxo.entry.outpoint.index,
+                amount: Number(utxo.entry.amount),
             };
         })
         .sort((a: UtxoInfo, b: UtxoInfo) => b.amount - a.amount);
@@ -240,12 +305,46 @@ export async function getAddress(path = "44'/111111'/0'/0/0", display = false) {
     };
 }
 
-export const sendTransaction = async (signedTx) => {
-    const txJson = signedTx.toApiJSON();
+function toRpcTransaction(signedTx: Transaction): kaspa.Transaction {
+    const inputs = signedTx.inputs.map((currInput: TransactionInput) => {
+        return new kaspa.TransactionInput({
+            signatureScript: `41${currInput.signature}01`,
+            previousOutpoint: {
+                index: currInput.outpointIndex,
+                transactionId: currInput.prevTxId,
+            },
+            sequence: BigInt(0),
+            sigOpCount: 1,
+        });
+    });
 
-    const { data } = await axios.post(`https://api.kaspa.org/transactions`, txJson);
+    const outputs = signedTx.outputs.map((currOutput: TransactionOutput) => {
+        return new kaspa.TransactionOutput(
+            BigInt(currOutput.value),
+            new kaspa.ScriptPublicKey(0, currOutput.scriptPublicKey),
+        );
+    });
 
-    return data.transactionId;
+    return new kaspa.Transaction({
+        inputs,
+        outputs,
+        gas: BigInt(0),
+        lockTime: BigInt(0),
+        subnetworkId: '0000000000000000000000000000000000000000',
+        payload: '',
+        version: 0,
+    });
+}
+
+export const sendTransaction = async (signedTx: Transaction) => {
+    const client = await rpc();
+    const wasmTx = toRpcTransaction(signedTx);
+    const submitRequest: kaspa.ISubmitTransactionRequest = {
+        transaction: wasmTx,
+    };
+    const resp = await client.submitTransaction(submitRequest);
+
+    return resp.transactionId;
 };
 
 export function createTransaction(
@@ -255,18 +354,20 @@ export function createTransaction(
     derivationPath: string,
     changeAddress: string,
     feeIncluded: boolean = false,
+    requiredFee: number = 0,
 ) {
     console.info('Amount:', amount);
     console.info('Send to:', sendTo);
     console.info('UTXOs:', utxosInput);
     console.info('Derivation Path:', derivationPath);
+    console.info('Required Fee:', requiredFee);
 
     const {
         hasEnough,
         utxos,
         fee,
         total: totalUtxoAmount,
-    } = selectUtxos(amount, utxosInput, feeIncluded);
+    } = selectUtxos(amount, utxosInput, feeIncluded, requiredFee);
 
     console.info('hasEnough', hasEnough);
     console.info(utxos);
@@ -353,4 +454,39 @@ export async function signMessage(message, addressType, addressIndex, deviceType
     const transport = await initTransport(deviceType);
     const kaspa = new Kaspa(transport);
     return await kaspa.signMessage(message, addressType, addressIndex);
+}
+
+export async function fetchServerInfo() {
+    return await rpc().then(async (rpcClient) => {
+        return await rpcClient.getServerInfo();
+    });
+}
+
+/**
+ * Tracks a transactionId until we see a VSPC changed notification
+ * that tells us the transactionId has been accepted
+ * @param transactionId
+ * @returns
+ */
+export async function trackUntilConfirmed(transactionId: string) {
+    const client = await rpc();
+
+    await client.subscribeVirtualChainChanged(true);
+
+    return new Promise((resolve) => {
+        const callback = async (event) => {
+            if (event.type == 'virtual-chain-changed') {
+                for (const acceptingBlock of event.data.acceptedTransactionIds) {
+                    for (const acceptedTransactionId of acceptingBlock.acceptedTransactionIds) {
+                        if (acceptedTransactionId == transactionId) {
+                            client.unsubscribeVirtualChainChanged(true);
+                            resolve(acceptingBlock);
+                        }
+                    }
+                }
+            }
+        };
+
+        client.addEventListener(callback);
+    });
 }
