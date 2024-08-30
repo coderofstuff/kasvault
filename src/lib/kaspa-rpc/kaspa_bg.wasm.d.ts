@@ -55,7 +55,11 @@ export function transactioninput_constructor(a: number, b: number): void;
 export function transactioninput_get_previous_outpoint(a: number): number;
 export function transactioninput_set_previous_outpoint(a: number, b: number, c: number): void;
 export function transactioninput_get_signature_script_as_hex(a: number, b: number): void;
-export function transactioninput_set_signature_script_from_js_value(a: number, b: number, c: number): void;
+export function transactioninput_set_signature_script_from_js_value(
+    a: number,
+    b: number,
+    c: number,
+): void;
 export function transactioninput_get_sequence(a: number): number;
 export function transactioninput_set_sequence(a: number, b: number): void;
 export function transactioninput_get_sig_op_count(a: number): number;
