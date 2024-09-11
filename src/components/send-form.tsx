@@ -23,8 +23,9 @@ import { kasToSompi, sompiToKas, NETWORK_UTXO_LIMIT } from '../lib/kaspa-util';
 
 export default function SendForm(props) {
     const [confirming, setConfirming] = useState(false);
-    const [fee, setFee] = useState<string | number>('-');
+    const [minimumFee, setMinimumFee] = useState<number>(0);
     const [amountDescription, setAmountDescription] = useState<string>();
+    const [selectedUtxos, setSelectedUtxos] = useState([]);
 
     const [canSendAmount, setCanSendAmount] = useState(false);
 
@@ -39,12 +40,18 @@ export default function SendForm(props) {
             amount: undefined,
             sendTo: '',
             includeFeeInAmount: false,
+            manualFee: false,
+            fee: 0,
             sentAmount: '',
             sentTo: '',
             sentTxId: '',
         },
         validate: {
             amount: (value) => (!(Number(value) > 0) ? 'Amount must be greater than 0' : null),
+            fee: (value) =>
+                form.values.manualFee && value < minimumFee
+                    ? 'Fee must be at least ' + minimumFee
+                    : null,
             sendTo: (value) => (!/^kaspa\:[a-z0-9]{61,63}$/.test(value) ? 'Invalid address' : null),
         },
         validateInputOnBlur: true,
@@ -53,7 +60,7 @@ export default function SendForm(props) {
     const resetState = (resetAllValues = false) => {
         // Reset setup
         setConfirming(false);
-        setFee('-');
+        setMinimumFee(0);
         let baseValues = { amount: '', sendTo: '', includeFeeInAmount: false };
 
         if (resetAllValues) {
@@ -65,13 +72,15 @@ export default function SendForm(props) {
 
     const cleanupOnSuccess = (transactionId) => {
         const targetAmount = form.values.includeFeeInAmount
-            ? (Number(form.values.amount) - Number(fee)).toFixed(8)
+            ? (Number(form.values.amount) - Number(form.values.fee)).toFixed(8)
             : form.values.amount;
 
         form.setValues({
             sentTo: form.values.sendTo,
             sentTxId: transactionId,
             sentAmount: targetAmount,
+            fee: 0,
+            manualFee: false,
         });
         openSuccessModal();
 
@@ -88,8 +97,19 @@ export default function SendForm(props) {
 
     useEffect(() => {
         // Whenever any of fields change, we calculate the fees
-        calcFee(form.values.sendTo, form.values.amount, form.values.includeFeeInAmount);
-    }, [form.values.sendTo, form.values.amount, form.values.includeFeeInAmount]);
+        calcFee(
+            form.values.sendTo,
+            form.values.amount,
+            form.values.includeFeeInAmount,
+            form.values.manualFee,
+        );
+    }, [
+        form.values.sendTo,
+        form.values.amount,
+        form.values.includeFeeInAmount,
+        form.values.manualFee,
+        form.values.fee,
+    ]);
 
     const { start: simulateConfirmation } = useTimeout((args) => {
         // Hide when ledger confirms
@@ -116,10 +136,11 @@ export default function SendForm(props) {
                 const { tx } = createTransaction(
                     kasToSompi(Number(form.values.amount)),
                     form.values.sendTo,
-                    props.addressContext.utxos,
+                    selectedUtxos,
                     props.addressContext.derivationPath,
                     props.addressContext.address,
                     form.values.includeFeeInAmount,
+                    kasToSompi(form.values.fee),
                 );
 
                 const transactionId = await sendAmount(tx, deviceType);
@@ -158,18 +179,24 @@ export default function SendForm(props) {
         }
     };
 
-    const calcFee = (sendTo, amount, includeFeeInAmount) => {
+    const calcFee = (sendTo, amount, includeFeeInAmount, manualFee) => {
         setAmountDescription('');
 
         if (amount && sendTo) {
-            let calculatedFee: string | number = '-';
+            let calculatedFee = 0;
+            const requiredFee = manualFee ? form.values.fee : 0;
 
             const {
                 hasEnough,
                 utxos,
                 fee: feeCalcResult,
                 total: utxoTotalAmount,
-            } = selectUtxos(kasToSompi(amount), props.addressContext.utxos, includeFeeInAmount);
+            } = selectUtxos(
+                kasToSompi(amount),
+                props.addressContext.utxos,
+                includeFeeInAmount,
+                requiredFee,
+            );
 
             if (utxos.length > NETWORK_UTXO_LIMIT) {
                 const maxCompoundableAmount = sompiToKas(
@@ -202,18 +229,24 @@ export default function SendForm(props) {
                 calculatedFee = sompiToKas(expectedFee);
                 const afterFeeDisplay = sompiToKas(kasToSompi(amount) - expectedFee);
                 setCanSendAmount(true);
+                setSelectedUtxos(utxos);
                 if (includeFeeInAmount) {
                     setAmountDescription(`Amount after fee: ${afterFeeDisplay}`);
                 }
             } else {
                 setCanSendAmount(false);
+                setSelectedUtxos([]);
             }
 
-            if (fee === '-' || fee !== calculatedFee) {
-                setFee(calculatedFee);
+            if (minimumFee !== calculatedFee) {
+                setMinimumFee(calculatedFee);
+            }
+
+            if (!form.values.manualFee) {
+                form.setValues({ fee: calculatedFee });
             }
         } else {
-            setFee('-');
+            setMinimumFee(0);
             setCanSendAmount(false);
             setAmountDescription('');
         }
@@ -246,6 +279,7 @@ export default function SendForm(props) {
                     placeholder='0'
                     min={0}
                     decimalScale={8}
+                    step={0.00000001}
                     disabled={confirming}
                     required
                     {...form.getInputProps('amount')}
@@ -261,15 +295,35 @@ export default function SendForm(props) {
                     description={amountDescription}
                 />
 
-                <Checkbox
-                    {...form.getInputProps('includeFeeInAmount', { type: 'checkbox' })}
-                    label='Include fee in amount'
-                    disabled={confirming}
-                />
+                <Group justify='space-between'>
+                    <Checkbox
+                        {...form.getInputProps('includeFeeInAmount', { type: 'checkbox' })}
+                        label='Include fee in amount'
+                        disabled={confirming}
+                    />
+
+                    <Checkbox
+                        {...form.getInputProps('manualFee', { type: 'checkbox' })}
+                        label='Set fee manually'
+                        disabled={confirming}
+                    />
+                </Group>
 
                 <Group justify='space-between'>
                     <Text fw={700}>Fee:</Text>
-                    <Text>{fee}</Text>
+                    {form.values.manualFee ? (
+                        <NumberInput
+                            placeholder='0'
+                            min={0}
+                            decimalScale={8}
+                            disabled={confirming}
+                            required
+                            {...form.getInputProps('fee')}
+                            inputWrapperOrder={['label', 'input', 'description', 'error']}
+                        />
+                    ) : (
+                        <Text>{minimumFee > 0 ? minimumFee : '-'}</Text>
+                    )}
                 </Group>
 
                 <Button
@@ -277,7 +331,7 @@ export default function SendForm(props) {
                     onClick={signAndSend}
                     disabled={confirming || !canSendAmount || !form.isValid()}
                 >
-                    Sign with Ledger and Send
+                    Sign with Ledger and Send {form.isValid()}
                 </Button>
             </Stack>
             <Modal
