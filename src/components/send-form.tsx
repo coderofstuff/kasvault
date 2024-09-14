@@ -195,7 +195,7 @@ export default function SendForm(props) {
                 kasToSompi(amount),
                 props.addressContext.utxos,
                 includeFeeInAmount,
-                requiredFee,
+                kasToSompi(requiredFee),
             );
 
             if (utxos.length > NETWORK_UTXO_LIMIT) {
