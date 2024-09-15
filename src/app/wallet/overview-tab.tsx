@@ -176,7 +176,7 @@ export default function OverviewTab(props: OverviewTabProps) {
                 <SendForm
                     onSuccess={updateAddressDetails}
                     addressContext={selectedAddress}
-                    txToReplace={props.mempoolEntryToReplace?.transaction}
+                    mempoolEntryToReplace={props.mempoolEntryToReplace}
                 />
             );
             break;

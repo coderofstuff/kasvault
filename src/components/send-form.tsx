@@ -27,13 +27,13 @@ import {
 import AddressText from '../components/address-text';
 import { useForm } from '@mantine/form';
 import { kasToSompi, sompiToKas, NETWORK_UTXO_LIMIT } from '../lib/kaspa-util';
-import { ITransaction } from '../lib/kaspa-rpc';
+import { IMempoolEntry } from '../lib/kaspa-rpc';
 // import { IconAlertCircle } from '@tabler/icons-react';
 
 interface SendFormProps {
     // TODO: set correct typing
     addressContext?: any;
-    txToReplace?: ITransaction;
+    mempoolEntryToReplace?: IMempoolEntry;
     onSuccess?: (result: SendAmountResult) => void;
 }
 
@@ -114,6 +114,21 @@ export default function SendForm(props: SendFormProps) {
     }, [props.addressContext]);
 
     useEffect(() => {
+        if (props.mempoolEntryToReplace) {
+            // Prefill the transactions when the mempool entry changes
+            form.setValues({
+                sendTo: props.mempoolEntryToReplace.transaction.outputs[0].verboseData
+                    .scriptPublicKeyAddress,
+                amount: sompiToKas(
+                    Number(props.mempoolEntryToReplace.transaction.outputs[0].value),
+                ),
+                manualFee: true,
+                fee: sompiToKas(Number(props.mempoolEntryToReplace.fee)),
+            });
+        }
+    }, [props.mempoolEntryToReplace]);
+
+    useEffect(() => {
         // Whenever any of fields change, we calculate the fees
         calcFee(
             form.values.sendTo,
@@ -181,7 +196,7 @@ export default function SendForm(props: SendFormProps) {
                 const result: SendAmountResult = await sendAmount(
                     tx,
                     deviceType,
-                    props.txToReplace?.verboseData?.transactionId,
+                    props.mempoolEntryToReplace?.transaction.verboseData?.transactionId,
                 );
 
                 cleanupOnSuccess(result);
