@@ -231,6 +231,11 @@ export async function fetchAddressDetails(address, derivationPath) {
     };
 }
 
+export async function fetchFeeRate() {
+    const client = await rpc();
+    return await client.getFeeEstimate({});
+}
+
 export async function fetchTransactions(address, offset = 0, limit = 100) {
     const { data: txsData } = await axios.get(
         `https://api.kaspa.org/addresses/${address}/full-transactions?offset=${offset}&limit=${limit}&resolve_previous_outpoints=light`,
@@ -336,15 +341,51 @@ function toRpcTransaction(signedTx: Transaction): kaspa.Transaction {
     });
 }
 
-export const sendTransaction = async (signedTx: Transaction) => {
+export const sendTransaction = async (
+    signedTx: Transaction,
+    txIdToReplace?: string,
+): Promise<SendAmountResult> => {
     const client = await rpc();
     const wasmTx = toRpcTransaction(signedTx);
     const submitRequest: kaspa.ISubmitTransactionRequest = {
         transaction: wasmTx,
     };
-    const resp = await client.submitTransaction(submitRequest);
 
-    return resp.transactionId;
+    if (txIdToReplace == wasmTx.id) {
+        throw new Error('Current transaction is the same as the one it is trying to replace');
+    }
+
+    let sendAmountResult = {
+        transactionId: null,
+        replacedTransactionId: null,
+    };
+
+    if (txIdToReplace) {
+        const resp = await client.submitTransactionReplacement(submitRequest);
+        sendAmountResult.transactionId = resp.transactionId.toString();
+        sendAmountResult.replacedTransactionId = resp.replacedTransaction.id.toString();
+
+        if (sendAmountResult.replacedTransactionId !== txIdToReplace) {
+            throw new Error(
+                `Replaced transaction ${sendAmountResult.replacedTransactionId} but expecting to replace ${txIdToReplace}`,
+            );
+        }
+    } else {
+        const resp = await client.submitTransaction(submitRequest);
+        sendAmountResult.transactionId = resp.transactionId.toString();
+    }
+
+    console.info('sendTransaction::response', sendAmountResult);
+    // if (sendAmountResult.transactionId != wasmTx.id) {
+    //     console.info(
+    //         `Unexpected transaction id. Expected ${wasmTx.id} but got ${sendAmountResult.transactionId}`,
+    //     );
+    //     throw new Error(
+    //         `Unexpected transaction id. Expected ${wasmTx.id} but got ${sendAmountResult.transactionId}`,
+    //     );
+    // }
+
+    return sendAmountResult;
 };
 
 export function createTransaction(
@@ -432,14 +473,23 @@ export function createTransaction(
     return { tx, fee };
 }
 
-export async function sendAmount(tx, deviceType) {
+export interface SendAmountResult {
+    transactionId: string;
+    replacedTransactionId?: string;
+}
+
+export async function sendAmount(
+    tx,
+    deviceType,
+    txIdToReplace?: string,
+): Promise<SendAmountResult> {
     const transport = await initTransport(deviceType);
     const kaspa = new Kaspa(transport);
     await kaspa.signTransaction(tx);
 
     console.info('tx', tx);
 
-    return await sendTransaction(tx);
+    return await sendTransaction(tx, txIdToReplace);
 }
 
 /**
@@ -460,6 +510,17 @@ export async function fetchServerInfo() {
     return await rpc().then(async (rpcClient) => {
         return await rpcClient.getServerInfo();
     });
+}
+
+export async function findTransactionsInMempool(addresses: string[]) {
+    const client = await rpc();
+    const transactions = await client.getMempoolEntriesByAddresses({
+        addresses,
+        filterTransactionPool: false,
+        includeOrphanPool: false,
+    });
+
+    return transactions;
 }
 
 /**

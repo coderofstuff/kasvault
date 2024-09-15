@@ -11,23 +11,40 @@ import {
     Text,
     NumberInput,
     UnstyledButton,
+    // Tooltip,
 } from '@mantine/core';
 import { useTimeout, useDisclosure, useViewportSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 
 import { useState, useEffect } from 'react';
-import { createTransaction, sendAmount, selectUtxos } from '../lib/ledger';
+import {
+    createTransaction,
+    sendAmount,
+    selectUtxos,
+    // fetchFeeRate,
+    SendAmountResult,
+} from '../lib/ledger';
 import AddressText from '../components/address-text';
 import { useForm } from '@mantine/form';
 import { kasToSompi, sompiToKas, NETWORK_UTXO_LIMIT } from '../lib/kaspa-util';
+import { ITransaction } from '../lib/kaspa-rpc';
+// import { IconAlertCircle } from '@tabler/icons-react';
 
-export default function SendForm(props) {
+interface SendFormProps {
+    // TODO: set correct typing
+    addressContext?: any;
+    txToReplace?: ITransaction;
+    onSuccess?: (result: SendAmountResult) => void;
+}
+
+export default function SendForm(props: SendFormProps) {
     const [confirming, setConfirming] = useState(false);
     const [minimumFee, setMinimumFee] = useState<number>(0);
     const [amountDescription, setAmountDescription] = useState<string>();
     const [selectedUtxos, setSelectedUtxos] = useState([]);
 
     const [canSendAmount, setCanSendAmount] = useState(false);
+    // const [currFeeRate, setCurrFeeRate] = useState<IFeeEstimate | null>(null);
 
     const [isSuccessModalOpen, { open: openSuccessModal, close: closeSuccessModal }] =
         useDisclosure();
@@ -45,6 +62,7 @@ export default function SendForm(props) {
             sentAmount: '',
             sentTo: '',
             sentTxId: '',
+            replacedTxId: '',
         },
         validate: {
             amount: (value) => (!(Number(value) > 0) ? 'Amount must be greater than 0' : null),
@@ -70,25 +88,25 @@ export default function SendForm(props) {
         }
     };
 
-    const cleanupOnSuccess = (transactionId) => {
+    const cleanupOnSuccess = (result: SendAmountResult) => {
         const targetAmount = form.values.includeFeeInAmount
             ? (Number(form.values.amount) - Number(form.values.fee)).toFixed(8)
             : form.values.amount;
 
         form.setValues({
             sentTo: form.values.sendTo,
-            sentTxId: transactionId,
+            sentTxId: result.transactionId,
+            replacedTxId: result.replacedTransactionId || '',
             sentAmount: targetAmount,
             fee: 0,
             manualFee: false,
         });
+
         openSuccessModal();
 
         resetState();
 
-        if (props.onSuccess) {
-            props.onSuccess(transactionId);
-        }
+        props.onSuccess?.(result);
     };
 
     useEffect(() => {
@@ -111,13 +129,30 @@ export default function SendForm(props) {
         form.values.fee,
     ]);
 
+    // TODO: handle fee rate estimation
+    // useEffect(() => {
+    //     // Fee Rate interval
+    //     fetchFeeRate().then((rate) => setCurrFeeRate(rate.estimate));
+    //     const feeRateInterval = setInterval(async () => {
+    //         const rate = await fetchFeeRate();
+    //         console.info('rate', rate);
+    //         setCurrFeeRate(rate.estimate);
+    //     }, 5000);
+
+    //     return () => {
+    //         clearInterval(feeRateInterval);
+    //     };
+    // }, []);
+
     const { start: simulateConfirmation } = useTimeout((args) => {
         // Hide when ledger confirms
         const notifId = args[0];
 
         notifications.hide(notifId);
 
-        cleanupOnSuccess('c130ca7a3edeeeb2dc0130a8bac188c040415dc3ef2265d541336334c3c75f00');
+        cleanupOnSuccess({
+            transactionId: 'c130ca7a3edeeeb2dc0130a8bac188c040415dc3ef2265d541336334c3c75f00',
+        });
     }, 3000);
 
     const signAndSend = async () => {
@@ -143,9 +178,13 @@ export default function SendForm(props) {
                     kasToSompi(form.values.fee),
                 );
 
-                const transactionId = await sendAmount(tx, deviceType);
+                const result: SendAmountResult = await sendAmount(
+                    tx,
+                    deviceType,
+                    props.txToReplace?.verboseData?.transactionId,
+                );
 
-                cleanupOnSuccess(transactionId);
+                cleanupOnSuccess(result);
             } catch (e) {
                 console.error(e);
 
@@ -302,11 +341,19 @@ export default function SendForm(props) {
                         disabled={confirming}
                     />
 
-                    <Checkbox
-                        {...form.getInputProps('manualFee', { type: 'checkbox' })}
-                        label='Set fee manually'
-                        disabled={confirming}
-                    />
+                    <Group>
+                        {/* {canSendAmount && currFeeRate?.normalBucket?.[0]?.feerate > 1 ? (
+                            <Tooltip label='Higher network fee rate detected. Consider raising transaction fee.'>
+                                <IconAlertCircle color='red' />
+                            </Tooltip>
+                        ) : null} */}
+
+                        <Checkbox
+                            {...form.getInputProps('manualFee', { type: 'checkbox' })}
+                            label='Set fee manually'
+                            disabled={confirming}
+                        />
+                    </Group>
                 </Group>
 
                 <Group justify='space-between'>

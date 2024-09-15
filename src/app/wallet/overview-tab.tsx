@@ -4,11 +4,11 @@ import {
     Stack,
     ScrollArea,
     Text,
-    Loader,
     CopyButton,
     UnstyledButton,
     SegmentedControl,
     Tooltip,
+    Notification,
 } from '@mantine/core';
 import { useViewportSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -16,9 +16,16 @@ import { useRef, useState, useEffect } from 'react';
 import KaspaQrCode from '../../components/kaspa-qrcode';
 import SendForm from '../../components/send-form';
 import MessageForm from '../../components/message-form';
-import { IconCopy, IconCheck, IconShieldCheckFilled, IconShield } from '@tabler/icons-react';
+import {
+    IconCopy,
+    IconCheck,
+    IconShieldCheckFilled,
+    IconShield,
+    IconReplace,
+} from '@tabler/icons-react';
 import AddressText from '../../components/address-text';
 import {
+    SendAmountResult,
     fetchAddressDetails,
     // fetchTransaction,
     getAddress,
@@ -28,23 +35,44 @@ import {
 
 import styles from './overview-tab.module.css';
 import { sompiToKas } from '../../lib/kaspa-util';
+import { ISelectedAddress } from './types';
+import { IMempoolEntry } from '../../lib/kaspa-rpc/kaspa';
 
-export default function OverviewTab(props) {
+interface OverviewTabProps {
+    containerWidth: number;
+    containerHeight: number;
+    selectedAddress?: ISelectedAddress;
+    mempoolEntryToReplace?: IMempoolEntry;
+    setSelectedAddress: (selectedAddress: ISelectedAddress) => void;
+    setMempoolEntryToReplace: (mempoolEntry: IMempoolEntry | null) => void;
+    setPendingTxId: (txId: string | null) => void;
+    // FIXME: set correct typing for these two
+    setAddresses: (addresses: any[]) => void;
+    addresses: any[];
+    deviceType: string;
+}
+
+export default function OverviewTab(props: OverviewTabProps) {
     const groupRef = useRef(null);
-    const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
     const [isAddressVerified, setIsAddressVerified] = useState(false);
     const [signView, setSignView] = useState('Transaction');
+    const [confirmingTxId, setConfirmingTxId] = useState<string | null>(null);
     const { width, height } = useViewportSize();
-
-    const selectedAddress = props.selectedAddress || {};
-
-    const partitionWidth =
-        props.containerWidth >= 700 ? props.containerWidth / 2 - 32.5 : props.containerWidth - 32;
-    const divider = props.containerWidth >= 700 ? <Divider orientation='vertical' /> : null;
 
     useEffect(() => {
         setIsAddressVerified(false);
     }, [props.selectedAddress]);
+
+    const selectedAddress = props.selectedAddress;
+
+    if (!selectedAddress) {
+        // Short circuit if there's no address selected yet:
+        return null;
+    }
+
+    const partitionWidth =
+        props.containerWidth >= 700 ? props.containerWidth / 2 - 32.5 : props.containerWidth - 32;
+    const divider = props.containerWidth >= 700 ? <Divider orientation='vertical' /> : null;
 
     const verifyAddress = async () => {
         if (isAddressVerified) {
@@ -95,17 +123,20 @@ export default function OverviewTab(props) {
         }
     };
 
-    const updateAddressDetails = async (transactionId) => {
-        if (!props.setAddresses && !props.setSelectedAddress) {
-            return;
-        }
-
-        setAwaitingConfirmation(true);
+    const updateAddressDetails = async (result: SendAmountResult) => {
+        props.setMempoolEntryToReplace(null);
+        props.setPendingTxId(result.transactionId);
+        setConfirmingTxId(result.transactionId);
 
         try {
             // TODO: Fix a possible case where transaction was already added in a block before
             // we started tracking
-            await trackUntilConfirmed(transactionId);
+            await trackUntilConfirmed(result.transactionId);
+
+            props.setPendingTxId(null);
+
+            // Track confirmations:
+            setConfirmingTxId(null);
 
             // After waiting for a bit, now we update the address details
             const addressDetails = await fetchAddressDetails(
@@ -115,16 +146,12 @@ export default function OverviewTab(props) {
 
             selectedAddress.balance = sompiToKas(Number(addressDetails.balance));
             selectedAddress.utxos = addressDetails.utxos;
-            selectedAddress.newTransactions++;
-            // selectedAddress.txCount = addressDetails.txCount;
 
             if (props.setAddresses) {
                 props.addresses.forEach((address) => {
                     if (address.key === selectedAddress.key) {
                         address.balance = selectedAddress.balance;
                         address.utxos = selectedAddress.utxos;
-                        address.newTransactions = selectedAddress.newTransactions;
-                        // address.txCount = selectedAddress.txCount;
                     }
                 });
                 props.setAddresses(props.addresses);
@@ -134,7 +161,7 @@ export default function OverviewTab(props) {
                 props.setSelectedAddress(selectedAddress);
             }
         } finally {
-            setAwaitingConfirmation(false);
+            setConfirmingTxId(null);
         }
     };
 
@@ -149,7 +176,7 @@ export default function OverviewTab(props) {
                 <SendForm
                     onSuccess={updateAddressDetails}
                     addressContext={selectedAddress}
-                    hideHeader={true}
+                    txToReplace={props.mempoolEntryToReplace?.transaction}
                 />
             );
             break;
@@ -161,6 +188,39 @@ export default function OverviewTab(props) {
         default:
             break;
     }
+
+    const replacingTxText = props.mempoolEntryToReplace ? (
+        <Group w={partitionWidth - 4} justify='space-between'>
+            <Notification
+                title='Replacing Transaction'
+                icon={<IconReplace size={16} />}
+                onClose={() => {
+                    props.setMempoolEntryToReplace(null);
+                    notifications.show({
+                        message: 'RBF cancelled',
+                        autoClose: 3000,
+                    });
+                }}
+            >
+                <Text style={{ overflowWrap: 'break-word' }} fz={'0.8rem'}>
+                    {props.mempoolEntryToReplace.transaction.verboseData.transactionId}
+                </Text>
+            </Notification>
+        </Group>
+    ) : null;
+
+    const confirmingOrBalanceSection =
+        confirmingTxId && !props.mempoolEntryToReplace ? (
+            <Group w={partitionWidth - 4} justify='space-between'>
+                <Notification loading title='Confirming' withCloseButton={false}>
+                    <Text style={{ overflowWrap: 'break-word' }} fz={'0.8rem'}>
+                        {confirmingTxId}
+                    </Text>
+                </Notification>
+            </Group>
+        ) : (
+            <Text fz='lg'>{selectedAddress.balance} KAS</Text>
+        );
 
     return (
         <>
@@ -223,13 +283,7 @@ export default function OverviewTab(props) {
 
                         <KaspaQrCode value={selectedAddress.address} />
 
-                        <Group gap={'xs'}>
-                            {awaitingConfirmation ? (
-                                <Loader size={20} />
-                            ) : (
-                                <Text fz='lg'>{selectedAddress.balance} KAS</Text>
-                            )}
-                        </Group>
+                        <Group gap={'xs'}>{confirmingOrBalanceSection}</Group>
                     </Stack>
 
                     {divider}
@@ -242,6 +296,8 @@ export default function OverviewTab(props) {
                             fullWidth
                         />
                         {signSection}
+
+                        {replacingTxText}
                     </Stack>
                 </Group>
             </ScrollArea.Autosize>
