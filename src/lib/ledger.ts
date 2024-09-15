@@ -512,6 +512,21 @@ export async function fetchServerInfo() {
     });
 }
 
+export async function fetchBlock(
+    hash: string,
+    includeTransactions: boolean,
+): Promise<kaspa.IGetBlockResponse> {
+    const client = await rpc();
+    return await client.getBlock({ hash, includeTransactions });
+}
+
+export async function confirmationsSinceDaaScore(daaScore: bigint) {
+    const client = await rpc();
+    const info = await client.getBlockDagInfo();
+
+    return Math.max(0, Number(info.virtualDaaScore - daaScore));
+}
+
 export async function findTransactionsInMempool(addresses: string[]) {
     const client = await rpc();
     const transactions = await client.getMempoolEntriesByAddresses({

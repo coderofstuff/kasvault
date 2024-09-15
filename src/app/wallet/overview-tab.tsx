@@ -26,12 +26,14 @@ import {
 import AddressText from '../../components/address-text';
 import {
     SendAmountResult,
+    confirmationsSinceDaaScore,
     fetchAddressDetails,
+    fetchBlock,
     // fetchTransaction,
     getAddress,
     trackUntilConfirmed,
 } from '../../lib/ledger';
-// import { delay } from '../../lib/util';
+import { delay } from '../../lib/util';
 
 import styles from './overview-tab.module.css';
 import { sompiToKas } from '../../lib/kaspa-util';
@@ -56,7 +58,9 @@ export default function OverviewTab(props: OverviewTabProps) {
     const groupRef = useRef(null);
     const [isAddressVerified, setIsAddressVerified] = useState(false);
     const [signView, setSignView] = useState('Transaction');
+    const [acceptingTxId, setAcceptingTxId] = useState<string | null>(null);
     const [confirmingTxId, setConfirmingTxId] = useState<string | null>(null);
+    const [confirmationCount, setConfirmationCount] = useState<number>(0);
     const { width, height } = useViewportSize();
 
     useEffect(() => {
@@ -126,17 +130,32 @@ export default function OverviewTab(props: OverviewTabProps) {
     const updateAddressDetails = async (result: SendAmountResult) => {
         props.setMempoolEntryToReplace(null);
         props.setPendingTxId(result.transactionId);
+        setAcceptingTxId(result.transactionId);
         setConfirmingTxId(result.transactionId);
 
         try {
             // TODO: Fix a possible case where transaction was already added in a block before
             // we started tracking
-            await trackUntilConfirmed(result.transactionId);
+            const acceptingBlock: any = await trackUntilConfirmed(result.transactionId);
 
+            setAcceptingTxId(null);
             props.setPendingTxId(null);
 
+            const block = await fetchBlock(acceptingBlock.acceptingBlockHash, false);
+
+            for (let i = 0; i < 20; i++) {
+                const conf = await confirmationsSinceDaaScore(block.block.header.daaScore);
+                setConfirmationCount(conf);
+
+                if (conf >= 10) {
+                    break;
+                }
+
+                await delay(1000);
+            }
             // Track confirmations:
             setConfirmingTxId(null);
+            setConfirmationCount(0);
 
             // After waiting for a bit, now we update the address details
             const addressDetails = await fetchAddressDetails(
@@ -212,9 +231,13 @@ export default function OverviewTab(props: OverviewTabProps) {
     const confirmingOrBalanceSection =
         confirmingTxId && !props.mempoolEntryToReplace ? (
             <Group w={partitionWidth - 4} justify='space-between'>
-                <Notification loading title='Confirming' withCloseButton={false}>
+                <Notification
+                    loading
+                    title={acceptingTxId ? 'Waiting for Acceptance' : 'Confirming Transaction'}
+                    withCloseButton={false}
+                >
                     <Text style={{ overflowWrap: 'break-word' }} fz={'0.8rem'}>
-                        {confirmingTxId}
+                        {confirmingTxId} (Confirmations: {confirmationCount})
                     </Text>
                 </Notification>
             </Group>
