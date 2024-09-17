@@ -88,10 +88,7 @@ export default function Home() {
             }
         }
 
-        setIsShowDemo(
-            window.location.hostname !== 'kasvault.io' &&
-                window.location.hostname !== 'rbf.kasvault.io',
-        );
+        setIsShowDemo(window.location.hostname !== 'kasvault.io');
     }, []);
 
     const smallStyles = width <= 48 * 16 ? { fontSize: '1rem' } : {};
