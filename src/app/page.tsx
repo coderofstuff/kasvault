@@ -67,7 +67,6 @@ const WHITELIST = [
     'preview.kasvault.io',
     'privatepreview.kasvault.io',
     'kasvault.vercel.app',
-    'rbf.kasvault.io',
 ];
 
 export default function Home() {
