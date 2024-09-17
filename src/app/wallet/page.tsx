@@ -23,6 +23,8 @@ import { useElementSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import SettingsStore from '../../lib/settings-store';
 import { kasToSompi, sompiToKas, NETWORK_UTXO_LIMIT } from '../../lib/kaspa-util';
+import { IMempoolEntry } from '../../lib/kaspa-rpc/kaspa';
+import { IAddressData, ISelectedAddress } from './types';
 
 let loadingAddressBatch = false;
 let addressInitialized = false;
@@ -41,7 +43,7 @@ function loadAddressDetails(rawAddress) {
     const fetchAddressPromise = fetchAddressDetails(rawAddress.address, rawAddress.derivationPath);
 
     return fetchAddressPromise.then((addressDetails) => {
-        rawAddress.balance = sompiToKas(addressDetails.balance);
+        rawAddress.balance = sompiToKas(Number(addressDetails.balance));
         rawAddress.utxos = addressDetails.utxos;
         // rawAddress.txCount = addressDetails.txCount;
         rawAddress.loading = false;
@@ -60,7 +62,7 @@ async function loadOrScanAddressBatch(bip32, callback, callbackSetRawAddresses, 
     loadingAddressBatch = true;
 
     try {
-        let rawAddresses = [];
+        let rawAddresses: IAddressData[] = [];
 
         // If receive address isn't initialized yet, scan for the last address with funds within a batch:
         if (lastReceiveIndex < 0) {
@@ -160,9 +162,9 @@ async function loadOrScanAddressBatch(bip32, callback, callbackSetRawAddresses, 
                 derivationPath,
                 balance: 0,
                 loading: true,
-                newTransactions: 0,
                 addressIndex,
                 addressType,
+                utxos: [],
             };
 
             rawAddresses.push(receiveAddress);
@@ -267,14 +269,16 @@ function getDemoXPub() {
 }
 
 export default function Dashboard() {
-    const [addresses, setAddresses] = useState([]);
-    const [rawAddresses, setRawAddresses] = useState([]);
-    const [selectedAddress, setSelectedAddress] = useState(null);
+    const [addresses, setAddresses] = useState<IAddressData[]>([]);
+    const [rawAddresses, setRawAddresses] = useState<IAddressData[]>([]);
+    const [selectedAddress, setSelectedAddress] = useState<ISelectedAddress | null>(null);
     const [activeTab, setActiveTab] = useState('addresses');
     const [isTransportInitialized, setTransportInitialized] = useState(false);
     const [bip32base, setBIP32Base] = useState<KaspaBIP32>();
     const [userSettings, setUserSettings] = useState<SettingsStore>();
     const [enableGenerate, setEnableGenerate] = useState(false);
+    const [mempoolEntryToReplace, setMempoolEntryToReplace] = useState<IMempoolEntry | null>(null);
+    const [pendingTxId, setPendingTxId] = useState<string | null>(null);
 
     const { ref: containerRef, width: containerWidth, height: containerHeight } = useElementSize();
 
@@ -288,7 +292,7 @@ export default function Dashboard() {
                 deviceType === 'demo'
                     ? { address: bip32base.getAddress(0, newReceiveAddressIndex) }
                     : await getAddress(derivationPath);
-            const rawAddress = {
+            const rawAddress: IAddressData = {
                 key: address,
                 derivationPath,
                 address,
@@ -296,6 +300,7 @@ export default function Dashboard() {
                 addressIndex: newReceiveAddressIndex,
                 balance: 0,
                 loading: true,
+                utxos: [],
             };
 
             setRawAddresses([...rawAddresses, rawAddress]);
@@ -472,7 +477,6 @@ export default function Dashboard() {
                         <AddressesTab
                             addresses={addresses}
                             selectedAddress={selectedAddress}
-                            setAddresses={setAddresses}
                             setSelectedAddress={setSelectedAddress}
                             setActiveTab={setActiveTab}
                             containerWidth={containerWidth}
@@ -491,20 +495,24 @@ export default function Dashboard() {
                             addresses={addresses}
                             selectedAddress={selectedAddress}
                             setSelectedAddress={setSelectedAddress}
+                            setMempoolEntryToReplace={setMempoolEntryToReplace}
                             setAddresses={setAddresses}
                             containerWidth={containerWidth}
                             containerHeight={containerHeight}
                             deviceType={deviceType}
+                            mempoolEntryToReplace={mempoolEntryToReplace}
+                            setPendingTxId={setPendingTxId}
                         />
                     </Tabs.Panel>
 
                     <Tabs.Panel value='transactions'>
                         <TransactionsTab
                             selectedAddress={selectedAddress}
-                            setSelectedAddress={setSelectedAddress}
                             containerWidth={containerWidth}
                             containerHeight={containerHeight}
-                            newTransactions={selectedAddress ? selectedAddress.newTransactions : 0}
+                            pendingTxId={pendingTxId}
+                            setMempoolEntryToReplace={setMempoolEntryToReplace}
+                            setActiveTab={setActiveTab}
                         />
                     </Tabs.Panel>
                 </Tabs>

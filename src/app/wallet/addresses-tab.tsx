@@ -17,11 +17,22 @@ import {
 } from '@mantine/core';
 import { IconCircleX } from '@tabler/icons-react';
 import { useEffect } from 'react';
+import { IAddressData, ISelectedAddress } from './types';
 
-export default function AddressesTab(props) {
+interface IAddressesTabProps {
+    containerWidth: number;
+    containerHeight: number;
+    setActiveTab: (tabName: string) => void;
+    setSelectedAddress: (selectedAddress: ISelectedAddress) => void;
+    selectedAddress?: ISelectedAddress;
+    // TODO: Set correct type
+    addresses: IAddressData[];
+}
+
+export default function AddressesTab(props: IAddressesTabProps) {
     const width = props.containerWidth;
 
-    const onRowClick = (row) => {
+    const onRowClick = (row: ISelectedAddress) => {
         props.setSelectedAddress(row);
         props.setActiveTab('overview');
     };

@@ -4,11 +4,11 @@ import {
     Stack,
     ScrollArea,
     Text,
-    Loader,
     CopyButton,
     UnstyledButton,
     SegmentedControl,
     Tooltip,
+    Notification,
 } from '@mantine/core';
 import { useViewportSize } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -16,30 +16,67 @@ import { useRef, useState, useEffect } from 'react';
 import KaspaQrCode from '../../components/kaspa-qrcode';
 import SendForm from '../../components/send-form';
 import MessageForm from '../../components/message-form';
-import { IconCopy, IconCheck, IconShieldCheckFilled, IconShield } from '@tabler/icons-react';
+import {
+    IconCopy,
+    IconCheck,
+    IconShieldCheckFilled,
+    IconShield,
+    IconReplace,
+} from '@tabler/icons-react';
 import AddressText from '../../components/address-text';
-import { fetchAddressDetails, fetchTransaction, getAddress } from '../../lib/ledger';
+import {
+    SendAmountResult,
+    confirmationsSinceDaaScore,
+    fetchAddressDetails,
+    fetchBlock,
+    // fetchTransaction,
+    getAddress,
+    trackUntilConfirmed,
+} from '../../lib/ledger';
 import { delay } from '../../lib/util';
 
 import styles from './overview-tab.module.css';
 import { sompiToKas } from '../../lib/kaspa-util';
+import { ISelectedAddress } from './types';
+import { IMempoolEntry } from '../../lib/kaspa-rpc/kaspa';
 
-export default function OverviewTab(props) {
+interface OverviewTabProps {
+    containerWidth: number;
+    containerHeight: number;
+    selectedAddress?: ISelectedAddress;
+    mempoolEntryToReplace?: IMempoolEntry;
+    setSelectedAddress: (selectedAddress: ISelectedAddress) => void;
+    setMempoolEntryToReplace: (mempoolEntry: IMempoolEntry | null) => void;
+    setPendingTxId: (txId: string | null) => void;
+    // FIXME: set correct typing for these two
+    setAddresses: (addresses: any[]) => void;
+    addresses: any[];
+    deviceType: string;
+}
+
+export default function OverviewTab(props: OverviewTabProps) {
     const groupRef = useRef(null);
-    const [updatingDetails, setUpdatingDetails] = useState(false);
     const [isAddressVerified, setIsAddressVerified] = useState(false);
     const [signView, setSignView] = useState('Transaction');
+    const [acceptingTxId, setAcceptingTxId] = useState<string | null>(null);
+    const [confirmingTxId, setConfirmingTxId] = useState<string | null>(null);
+    const [confirmationCount, setConfirmationCount] = useState<number>(0);
     const { width, height } = useViewportSize();
-
-    const selectedAddress = props.selectedAddress || {};
-
-    const partitionWidth =
-        props.containerWidth >= 700 ? props.containerWidth / 2 - 32.5 : props.containerWidth - 32;
-    const divider = props.containerWidth >= 700 ? <Divider orientation='vertical' /> : null;
 
     useEffect(() => {
         setIsAddressVerified(false);
     }, [props.selectedAddress]);
+
+    const selectedAddress = props.selectedAddress;
+
+    if (!selectedAddress) {
+        // Short circuit if there's no address selected yet:
+        return null;
+    }
+
+    const partitionWidth =
+        props.containerWidth >= 700 ? props.containerWidth / 2 - 32.5 : props.containerWidth - 32;
+    const divider = props.containerWidth >= 700 ? <Divider orientation='vertical' /> : null;
 
     const verifyAddress = async () => {
         if (isAddressVerified) {
@@ -90,37 +127,35 @@ export default function OverviewTab(props) {
         }
     };
 
-    const updateAddressDetails = async (transactionId) => {
-        if (!props.setAddresses && !props.setSelectedAddress) {
-            return;
-        }
-
-        setUpdatingDetails(true);
+    const updateAddressDetails = async (result: SendAmountResult) => {
+        props.setMempoolEntryToReplace(null);
+        props.setPendingTxId(result.transactionId);
+        setAcceptingTxId(result.transactionId);
+        setConfirmingTxId(result.transactionId);
 
         try {
-            // Data needs some time to propagrate. Before we load new info, let's wait
-            await delay(1500);
+            // TODO: Fix a possible case where transaction was already added in a block before
+            // we started tracking
+            const acceptingBlock: any = await trackUntilConfirmed(result.transactionId);
 
-            for (let tries = 0; tries < 10; tries++) {
-                try {
-                    const txData = await fetchTransaction(transactionId);
+            setAcceptingTxId(null);
+            props.setPendingTxId(null);
 
-                    if (txData.is_accepted) {
-                        break;
-                    }
+            const block = await fetchBlock(acceptingBlock.acceptingBlockHash, false);
 
-                    await delay(1000);
-                } catch (e) {
-                    if (e.response && e.response.status === 404) {
-                        await delay(1000);
-                        continue;
-                    } else {
-                        // No errors expected here. Only log it if there's any:
-                        console.error(e);
-                        break;
-                    }
+            for (let i = 0; i < 20; i++) {
+                const conf = await confirmationsSinceDaaScore(block.block.header.daaScore);
+                setConfirmationCount(conf);
+
+                if (conf >= 10) {
+                    break;
                 }
+
+                await delay(1000);
             }
+            // Track confirmations:
+            setConfirmingTxId(null);
+            setConfirmationCount(0);
 
             // After waiting for a bit, now we update the address details
             const addressDetails = await fetchAddressDetails(
@@ -128,18 +163,14 @@ export default function OverviewTab(props) {
                 selectedAddress.derivationPath,
             );
 
-            selectedAddress.balance = sompiToKas(addressDetails.balance);
+            selectedAddress.balance = sompiToKas(Number(addressDetails.balance));
             selectedAddress.utxos = addressDetails.utxos;
-            selectedAddress.newTransactions++;
-            // selectedAddress.txCount = addressDetails.txCount;
 
             if (props.setAddresses) {
                 props.addresses.forEach((address) => {
                     if (address.key === selectedAddress.key) {
                         address.balance = selectedAddress.balance;
                         address.utxos = selectedAddress.utxos;
-                        address.newTransactions = selectedAddress.newTransactions;
-                        // address.txCount = selectedAddress.txCount;
                     }
                 });
                 props.setAddresses(props.addresses);
@@ -149,7 +180,7 @@ export default function OverviewTab(props) {
                 props.setSelectedAddress(selectedAddress);
             }
         } finally {
-            setUpdatingDetails(false);
+            setConfirmingTxId(null);
         }
     };
 
@@ -164,7 +195,7 @@ export default function OverviewTab(props) {
                 <SendForm
                     onSuccess={updateAddressDetails}
                     addressContext={selectedAddress}
-                    hideHeader={true}
+                    mempoolEntryToReplace={props.mempoolEntryToReplace}
                 />
             );
             break;
@@ -176,6 +207,43 @@ export default function OverviewTab(props) {
         default:
             break;
     }
+
+    const replacingTxText = props.mempoolEntryToReplace ? (
+        <Group w={partitionWidth - 4} justify='space-between'>
+            <Notification
+                title='Replacing Transaction'
+                icon={<IconReplace size={16} />}
+                onClose={() => {
+                    props.setMempoolEntryToReplace(null);
+                    notifications.show({
+                        message: 'RBF cancelled',
+                        autoClose: 3000,
+                    });
+                }}
+            >
+                <Text style={{ overflowWrap: 'break-word' }} fz={'0.8rem'}>
+                    {props.mempoolEntryToReplace.transaction.verboseData.transactionId}
+                </Text>
+            </Notification>
+        </Group>
+    ) : null;
+
+    const confirmingOrBalanceSection =
+        confirmingTxId && !props.mempoolEntryToReplace ? (
+            <Group w={partitionWidth - 4} justify='space-between'>
+                <Notification
+                    loading
+                    title={acceptingTxId ? 'Waiting for Acceptance' : 'Confirming Transaction'}
+                    withCloseButton={false}
+                >
+                    <Text style={{ overflowWrap: 'break-word' }} fz={'0.8rem'}>
+                        {confirmingTxId} (Confirmations: {confirmationCount})
+                    </Text>
+                </Notification>
+            </Group>
+        ) : (
+            <Text fz='lg'>{selectedAddress.balance} KAS</Text>
+        );
 
     return (
         <>
@@ -238,13 +306,7 @@ export default function OverviewTab(props) {
 
                         <KaspaQrCode value={selectedAddress.address} />
 
-                        <Group gap={'xs'}>
-                            {updatingDetails ? (
-                                <Loader size={20} />
-                            ) : (
-                                <Text fz='lg'>{selectedAddress.balance} KAS</Text>
-                            )}
-                        </Group>
+                        <Group gap={'xs'}>{confirmingOrBalanceSection}</Group>
                     </Stack>
 
                     {divider}
@@ -257,6 +319,8 @@ export default function OverviewTab(props) {
                             fullWidth
                         />
                         {signSection}
+
+                        {replacingTxText}
                     </Stack>
                 </Group>
             </ScrollArea.Autosize>

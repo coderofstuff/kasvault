@@ -1,6 +1,23 @@
+// Both these packages are expected to be included by react-app-rewired
 const webpack = require('webpack');
+const TerserPlugin = require('terser-webpack-plugin');
 
-module.exports = function override(config) {
+module.exports = function override(config, env) {
+    if (env === 'production') {
+        config.optimization.minimizer = config.optimization.minimizer.map((plugin) => {
+            if (plugin instanceof TerserPlugin) {
+                return new TerserPlugin({
+                    test: plugin.options.test,
+                    terserOptions: {
+                        keep_classnames: true,
+                    },
+                });
+            }
+
+            return plugin;
+        });
+    }
+
     const fallback = config.resolve.fallback || {};
     Object.assign(fallback, {
         crypto: false, // require.resolve("crypto-browserify") can be polyfilled here if needed
@@ -28,5 +45,8 @@ module.exports = function override(config) {
             fullySpecified: false,
         },
     });
+    config.experiments = {
+        asyncWebAssembly: true,
+    };
     return config;
 };
