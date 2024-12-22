@@ -426,7 +426,7 @@ export default function Dashboard() {
             return;
         }
 
-        if (deviceType === 'usb') {
+        if (deviceType === 'usb' || deviceType === 'bluetooth') {
             loadOrScanAddressBatch(bip32base, setAddresses, setRawAddresses, userSettings).finally(
                 () => {
                     setEnableGenerate(true);

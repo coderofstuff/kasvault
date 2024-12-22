@@ -87,7 +87,10 @@ export default function Home() {
             }
         }
 
-        setIsShowDemo(window.location.hostname !== 'kasvault.io');
+        setIsShowDemo(
+            window.location.hostname === 'preview.kasvault.io' ||
+                window.location.search.includes('demo'),
+        );
     }, []);
 
     const smallStyles = width <= 48 * 16 ? { fontSize: '1rem' } : {};
@@ -107,7 +110,23 @@ export default function Home() {
             </h2>
             <Text>(Replaced with bluetooth in the future)</Text>
         </Stack>
-    ) : null;
+    ) : (
+        <Stack
+            className={styles.card}
+            onClick={() => {
+                getAppData(navigate, 'bluetooth');
+            }}
+            align='center'
+        >
+            <h3>
+                <Group style={smallStyles}>
+                    <IconBluetooth style={smallStyles} /> Connect with Bluetooth
+                    <span>-&gt;</span>
+                </Group>
+            </h3>
+            <Text>Nano X, Stax and Flex</Text>
+        </Stack>
+    );
 
     return (
         <Stack className={styles.main}>
@@ -138,11 +157,11 @@ export default function Home() {
                     }}
                     align='center'
                 >
-                    <h2>
+                    <h3>
                         <Group style={smallStyles}>
                             <IconUsb /> Connect with USB <span>-&gt;</span>
                         </Group>
-                    </h2>
+                    </h3>
 
                     <Text>All Ledger devices</Text>
                 </Stack>

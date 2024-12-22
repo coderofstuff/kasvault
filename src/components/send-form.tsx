@@ -181,7 +181,7 @@ export default function SendForm(props: SendFormProps) {
 
         if (deviceType == 'demo') {
             simulateConfirmation(notifId);
-        } else if (deviceType == 'usb') {
+        } else if (deviceType == 'usb' || deviceType == 'bluetooth') {
             try {
                 const { tx } = createTransaction(
                     kasToSompi(Number(form.values.amount)),
