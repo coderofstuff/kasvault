@@ -67,6 +67,7 @@ const WHITELIST = [
     'preview.kasvault.io',
     'privatepreview.kasvault.io',
     'kasvault.vercel.app',
+    'bluetooth.kasvault.io',
 ];
 
 export default function Home() {
