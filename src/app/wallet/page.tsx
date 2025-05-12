@@ -6,9 +6,10 @@ import {
     fetchAddressDetails,
     initTransport,
     fetchAddressBalance,
+    isLedgerTransportInitialized,
 } from '../../lib/ledger';
 import { useState, useEffect } from 'react';
-import { Stack, Tabs, Breadcrumbs, Anchor, Button, Center } from '@mantine/core';
+import { Stack, Tabs, Breadcrumbs, Anchor, Button, Center, Modal, Text } from '@mantine/core';
 import Header from '../../components/header';
 import AddressesTab from './addresses-tab';
 import OverviewTab from './overview-tab';
@@ -279,6 +280,7 @@ export default function Dashboard() {
     const [enableGenerate, setEnableGenerate] = useState(false);
     const [mempoolEntryToReplace, setMempoolEntryToReplace] = useState<IMempoolEntry | null>(null);
     const [pendingTxId, setPendingTxId] = useState<string | null>(null);
+    const [showConnectModal, setShowConnectModal] = useState(false);
 
     const { ref: containerRef, width: containerWidth, height: containerHeight } = useElementSize();
 
@@ -376,27 +378,32 @@ export default function Dashboard() {
 
         let unloaded = false;
 
-        initTransport(deviceType)
-            .then(() => {
-                if (!unloaded) {
-                    setTransportInitialized(true);
+        if (!isLedgerTransportInitialized()) {
+            setShowConnectModal(true);
+        } else {
+            initTransport(deviceType)
+                .then(() => {
+                    if (!unloaded) {
+                        setTransportInitialized(true);
 
-                    return getXPubFromLedger().then((xpub) =>
-                        setBIP32Base(new KaspaBIP32(xpub.compressedPublicKey, xpub.chainCode)),
-                    );
-                }
+                        return getXPubFromLedger().then((xpub) =>
+                            setBIP32Base(new KaspaBIP32(xpub.compressedPublicKey, xpub.chainCode)),
+                        );
+                    }
 
-                return null;
-            })
-            .catch((e) => {
-                notifications.show({
-                    title: 'Error',
-                    color: 'red',
-                    message: 'Please make sure your device is unlocked and the Kaspa app is open',
-                    autoClose: false,
+                    return null;
+                })
+                .catch((e) => {
+                    notifications.show({
+                        title: 'Error',
+                        color: 'red',
+                        message:
+                            'Please make sure your device is unlocked and the Kaspa app is open',
+                        autoClose: false,
+                    });
+                    console.error(e);
                 });
-                console.error(e);
-            });
+        }
 
         return () => {
             unloaded = true;
@@ -454,6 +461,51 @@ export default function Dashboard() {
             <Header>
                 <Breadcrumbs>{breadcrumbs}</Breadcrumbs>
             </Header>
+
+            <Modal
+                centered
+                opened={showConnectModal}
+                withCloseButton={false}
+                onClose={() => setShowConnectModal(false)}
+                title={'Connect Ledger Device via ' + deviceType}
+            >
+                <Stack>
+                    <Text>Please connect your Ledger device and open the Kaspa app.</Text>
+                    <Button
+                        onClick={() => {
+                            setShowConnectModal(false);
+                            initTransport(deviceType)
+                                .then(() => {
+                                    setTransportInitialized(true);
+                                    return getXPubFromLedger().then((xpub) =>
+                                        setBIP32Base(
+                                            new KaspaBIP32(
+                                                xpub.compressedPublicKey,
+                                                xpub.chainCode,
+                                            ),
+                                        ),
+                                    );
+                                })
+                                .catch((e) => {
+                                    if (e.name === 'TransportOpenUserCancelled') {
+                                        setShowConnectModal(true);
+                                    } else {
+                                        notifications.show({
+                                            title: 'Error',
+                                            color: 'red',
+                                            message:
+                                                'Please make sure your device is unlocked and the Kaspa app is open',
+                                            autoClose: false,
+                                        });
+                                    }
+                                    console.error(e);
+                                });
+                        }}
+                    >
+                        Connect Device
+                    </Button>
+                </Stack>
+            </Modal>
 
             <Center>
                 <Tabs
