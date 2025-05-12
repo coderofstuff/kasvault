@@ -20,6 +20,7 @@ let transportState = {
     transport: null,
     initPromise: null,
     type: null,
+    initialized: false,
 };
 
 const kaspaState = {
@@ -167,8 +168,13 @@ export async function initTransport(type = 'usb') {
 
     transportState.transport = await transportState.initPromise;
     transportState.type = type;
+    transportState.initialized = true;
 
     return transportState.transport;
+}
+
+export function isLedgerTransportInitialized() {
+    return transportState.initialized;
 }
 
 export async function fetchTransactionCount(address) {
