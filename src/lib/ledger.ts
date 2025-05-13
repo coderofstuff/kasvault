@@ -1,4 +1,5 @@
 import TransportWebHID from '@ledgerhq/hw-transport-webhid';
+import BluetoothTransport from '@ledgerhq/hw-transport-web-ble';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 
@@ -19,6 +20,7 @@ let transportState = {
     transport: null,
     initPromise: null,
     type: null,
+    initialized: false,
 };
 
 const kaspaState = {
@@ -156,11 +158,23 @@ export async function initTransport(type = 'usb') {
         return await transportState.initPromise;
     }
 
-    transportState.initPromise = TransportWebHID.create();
+    if (type === 'usb') {
+        transportState.initPromise = TransportWebHID.create();
+    } else if (type === 'bluetooth') {
+        transportState.initPromise = BluetoothTransport.create();
+    } else {
+        throw new Error('Unknown device type');
+    }
+
     transportState.transport = await transportState.initPromise;
     transportState.type = type;
+    transportState.initialized = true;
 
     return transportState.transport;
+}
+
+export function isLedgerTransportInitialized() {
+    return transportState.initialized;
 }
 
 export async function fetchTransactionCount(address) {
