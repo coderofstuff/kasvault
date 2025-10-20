@@ -54,6 +54,7 @@ export default function AddressesTab(props: IAddressesTabProps) {
                     <Stack className={styles.small} justify='space-between'>
                         <Text className={styles.address} w={width - 40}>
                             <AddressText address={row.address} />
+                            {row.addressType === 1 ? ' ↩ ' : null}
                         </Text>
                         <Group justify='space-between'>
                             <Group>
