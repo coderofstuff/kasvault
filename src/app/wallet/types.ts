@@ -16,5 +16,6 @@ export interface ISelectedAddress {
     address: string;
     derivationPath: string;
     balance: number;
+    addressType: number;
     utxos: UtxoInfo[];
 }

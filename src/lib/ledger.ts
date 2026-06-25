@@ -113,7 +113,8 @@ export function selectUtxos(
     // 2. The signature script len is 66 (always true schnorr addresses)
     // 3. Payload is zero hash payload
     // 4. We're at mainnet
-    let minimumFee = 239 + 690;
+    // Note: base fee updated for Toccata
+    let minimumFee = 23900 + 69000;
     let fee = 0;
     let total = 0;
 
@@ -121,7 +122,7 @@ export function selectUtxos(
 
     // UTXOs is sorted descending:
     for (const utxo of utxosInput) {
-        minimumFee += 1118; // 1118 is described here https://kaspa-mdbook.aspectron.com/transactions/constraints/mass.html#input-mass
+        minimumFee += 111800; // 1118 is described here https://kaspa-mdbook.aspectron.com/transactions/constraints/mass.html#input-mass
         total += utxo.amount;
 
         fee = Math.max(minimumFee, requiredFee);
