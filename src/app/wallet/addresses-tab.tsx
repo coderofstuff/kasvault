@@ -15,7 +15,7 @@ import {
     Tooltip,
     UnstyledButton,
 } from '@mantine/core';
-import { IconCircleX } from '@tabler/icons-react';
+import { IconCircleX, IconArrowLeftRight } from '@tabler/icons-react';
 import { useEffect } from 'react';
 import { IAddressData, ISelectedAddress } from './types';
 
@@ -53,7 +53,18 @@ export default function AddressesTab(props: IAddressesTabProps) {
                 <Table.Td>
                     <Stack className={styles.small} justify='space-between'>
                         <Text className={styles.address} w={width - 40}>
-                            <AddressText address={row.address} />
+                            <Group wrap='nowrap'>
+                                <AddressText address={row.address} />
+                                {row.addressType === 1 && (
+                                    <Badge
+                                        variant='outline'
+                                        color='gray'
+                                        leftSection={<IconArrowLeftRight size={12} />}
+                                    >
+                                        Change
+                                    </Badge>
+                                )}
+                            </Group>
                         </Text>
                         <Group justify='space-between'>
                             <Group>
@@ -90,36 +101,47 @@ export default function AddressesTab(props: IAddressesTabProps) {
                     {props.selectedAddress ? (
                         <Stack className={styles.small} justify='space-between'>
                             <Text className={styles.address} w={width - 40}>
-                                <AddressText address={props.selectedAddress.address} />
-                                <Badge
-                                    ml={'1rem'}
-                                    rightSection={
-                                        props.addresses?.length > 1 ? (
-                                            <Tooltip label='Clear Address'>
-                                                <UnstyledButton
-                                                    style={{
-                                                        height: '1rem',
-                                                        width: '1rem',
-                                                    }}
-                                                    onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        props.setSelectedAddress(null);
-                                                        return false;
-                                                    }}
-                                                >
-                                                    <IconCircleX
+                                <Group wrap='nowrap'>
+                                    <AddressText address={props.selectedAddress.address} />
+                                    {props.selectedAddress.addressType === 1 && (
+                                        <Badge
+                                            variant='outline'
+                                            color='gray'
+                                            leftSection={<IconArrowLeftRight size={12} />}
+                                        >
+                                            Change
+                                        </Badge>
+                                    )}
+                                    <Badge
+                                        ml={'1rem'}
+                                        rightSection={
+                                            props.addresses?.length > 1 ? (
+                                                <Tooltip label='Clear Address'>
+                                                    <UnstyledButton
                                                         style={{
                                                             height: '1rem',
                                                             width: '1rem',
                                                         }}
-                                                    />
-                                                </UnstyledButton>
-                                            </Tooltip>
-                                        ) : null
-                                    }
-                                >
-                                    Selected
-                                </Badge>
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            props.setSelectedAddress(null);
+                                                            return false;
+                                                        }}
+                                                    >
+                                                        <IconCircleX
+                                                            style={{
+                                                                height: '1rem',
+                                                                width: '1rem',
+                                                            }}
+                                                        />
+                                                    </UnstyledButton>
+                                                </Tooltip>
+                                            ) : null
+                                        }
+                                    >
+                                        Selected
+                                    </Badge>
+                                </Group>
                             </Text>
                             <Group justify='space-between'>
                                 <Group>

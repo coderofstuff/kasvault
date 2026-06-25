@@ -30,11 +30,12 @@ import { IAddressData, ISelectedAddress } from './types';
 let loadingAddressBatch = false;
 let addressInitialized = false;
 
-const addressFilter = (lastReceiveIndex) => {
+const addressFilter = (lastReceiveIndex, lastChangeIndex) => {
     return (addressData, index) => {
         return (
             index == 0 || // Always show the first address
-            addressData.addressIndex <= lastReceiveIndex || // Always show if we've "generated" this address
+            (addressData.addressType === 0 && addressData.addressIndex <= lastReceiveIndex) || // Always show generated receive addresses
+            (addressData.addressType === 1 && addressData.addressIndex <= lastChangeIndex) || // Always show generated change addresses
             addressData.balance > 0
         ); // Always show if balance is positive
     };
@@ -53,152 +54,231 @@ function loadAddressDetails(rawAddress) {
     });
 }
 
+async function scanAddressType(bip32, addressType, startIndex) {
+    let nonEmptyAddressFound = true;
+    let scanIndexStart = startIndex;
+    let latestWithFunds = -1;
+    let addressesWithBalancesFound = 0;
+    const typeLabel = addressType === 0 ? 'receive' : 'change';
+
+    while (nonEmptyAddressFound) {
+        if (scanIndexStart > startIndex) {
+            await delay(1000);
+        }
+        nonEmptyAddressFound = false;
+
+        const batchSize = 5;
+        console.info(
+            `Scanning ${typeLabel} address range ${scanIndexStart} - ${
+                scanIndexStart + batchSize - 1
+            }`,
+        );
+
+        let promises = [];
+        for (
+            let addressIndex = scanIndexStart;
+            addressIndex < scanIndexStart + batchSize;
+            addressIndex++
+        ) {
+            const address = bip32.getAddress(addressType, addressIndex);
+
+            promises.push(
+                new Promise(async (resolve, reject) => {
+                    try {
+                        const balanceData = await fetchAddressBalance(address);
+                        resolve({ balanceData, addressIndex });
+                    } catch (e) {
+                        reject(e);
+                    }
+                }),
+            );
+        }
+
+        try {
+            const scanResults = await Promise.all(promises);
+
+            for (const result of scanResults) {
+                if (result.balanceData.balance > 0) {
+                    if (result.addressIndex > latestWithFunds) {
+                        latestWithFunds = result.addressIndex;
+                    }
+                    nonEmptyAddressFound = true;
+                    addressesWithBalancesFound++;
+                }
+            }
+        } catch (e) {
+            throw e;
+        }
+
+        scanIndexStart += 5;
+    }
+
+    return { latestWithFunds, addressesWithBalancesFound };
+}
+
+async function loadAddressesForType(
+    bip32,
+    addressType,
+    lastIndex,
+    rawAddresses,
+    callback,
+    callbackSetRawAddresses,
+    lastReceiveIndex,
+    lastChangeIndex,
+) {
+    if (lastIndex < 0) {
+        return;
+    }
+
+    for (let addressIndex = 0; addressIndex <= lastIndex; addressIndex++) {
+        const derivationPath = `44'/111111'/0'/${addressType}/${addressIndex}`;
+        const address = bip32.getAddress(addressType, addressIndex);
+        const addressData: IAddressData = {
+            key: address,
+            address,
+            derivationPath,
+            balance: 0,
+            loading: true,
+            addressIndex,
+            addressType,
+            utxos: [],
+        };
+
+        rawAddresses.push(addressData);
+        callbackSetRawAddresses(rawAddresses);
+        callback(rawAddresses.filter(addressFilter(lastReceiveIndex, lastChangeIndex)));
+    }
+
+    let promises = [];
+    for (const rawAddress of rawAddresses) {
+        if (!rawAddress.loading) {
+            continue;
+        }
+
+        promises.push(
+            loadAddressDetails(rawAddress).then((data) => {
+                callback(rawAddresses.filter(addressFilter(lastReceiveIndex, lastChangeIndex)));
+                return data;
+            }),
+        );
+
+        if (promises.length >= 5) {
+            await Promise.all(promises);
+            promises = [];
+        }
+    }
+
+    if (promises.length > 0) {
+        await Promise.all(promises);
+    }
+}
+
 async function loadOrScanAddressBatch(bip32, callback, callbackSetRawAddresses, userSettings) {
     if (loadingAddressBatch || addressInitialized) {
         return;
     }
 
     let lastReceiveIndex = userSettings.getSetting('lastReceiveIndex');
+    let lastChangeIndex = userSettings.getSetting('lastChangeIndex');
 
     loadingAddressBatch = true;
 
     try {
         let rawAddresses: IAddressData[] = [];
 
-        // If receive address isn't initialized yet, scan for the last address with funds within a batch:
+        let notifId: string | undefined;
+        let totalAddressesFound = 0;
+
+        // Scan receive addresses (type 0)
         if (lastReceiveIndex < 0) {
-            const notifId = notifications.show({
+            notifId = notifications.show({
                 title: 'First-time load detected',
                 message: 'Scanning for addresses with balance',
                 loading: true,
             });
             console.info('Initial load detected. Scanning for addresses');
-            let nonEmptyAddressFound = true;
-            let scanIndexStart = 0;
-            let latestWithFunds = 0;
-            let addressesWithBalancesFound = 0;
 
-            while (nonEmptyAddressFound) {
-                if (scanIndexStart > 0) {
-                    await delay(1000);
-                }
-                nonEmptyAddressFound = false;
-
-                // scan for the next batch of 5 addresses to see which is the latest one with that had funds
-                const batchSize = 5;
+            try {
+                const result = await scanAddressType(bip32, 0, 0);
+                lastReceiveIndex = result.latestWithFunds >= 0 ? result.latestWithFunds : 0;
+                totalAddressesFound += result.addressesWithBalancesFound;
+                userSettings.setSetting('lastReceiveIndex', lastReceiveIndex);
                 console.info(
-                    `Scanning receive address range ${scanIndexStart} - ${
-                        scanIndexStart + batchSize - 1
-                    }`,
+                    'Receive address scan complete. Last index with funds:',
+                    lastReceiveIndex,
                 );
+            } catch (e) {
+                notifications.hide(notifId);
+                notifications.show({
+                    title: 'Error',
+                    message:
+                        'Failed to scan for addresses with balance. Refresh the page to retry.',
+                    autoClose: false,
+                    color: 'red',
+                });
+                throw e;
+            }
+        }
 
-                let promises = [];
-                for (
-                    let addressIndex = scanIndexStart;
-                    addressIndex < scanIndexStart + batchSize;
-                    addressIndex++
-                ) {
-                    const addressType = 0; // Receive
-                    const address = bip32.getAddress(addressType, addressIndex);
-
-                    promises.push(
-                        new Promise(async (resolve, reject) => {
-                            try {
-                                const balanceData = await fetchAddressBalance(address);
-
-                                resolve({ balanceData, addressIndex });
-                            } catch (e) {
-                                reject(e);
-                            }
-                        }),
-                    );
-                }
-
-                try {
-                    const scanResults = await Promise.all(promises);
-
-                    for (const result of scanResults) {
-                        if (result.balanceData.balance > 0) {
-                            if (result.addressIndex > latestWithFunds) {
-                                latestWithFunds = result.addressIndex;
-                            }
-                            nonEmptyAddressFound = true;
-                            addressesWithBalancesFound++;
-                        }
-                    }
-                } catch (e) {
+        // Scan change addresses (type 1)
+        if (lastChangeIndex < 0) {
+            try {
+                const result = await scanAddressType(bip32, 1, 0);
+                lastChangeIndex = result.latestWithFunds >= 0 ? result.latestWithFunds : -1;
+                totalAddressesFound += result.addressesWithBalancesFound;
+                userSettings.setSetting('lastChangeIndex', lastChangeIndex);
+                console.info(
+                    'Change address scan complete. Last index with funds:',
+                    lastChangeIndex,
+                );
+            } catch (e) {
+                if (notifId) {
                     notifications.hide(notifId);
-                    notifications.show({
-                        title: 'Error',
-                        message:
-                            'Failed to scan for addresses with balance. Refresh the page to retry.',
-                        autoClose: false,
-                        color: 'red',
-                    });
-                    throw e;
                 }
-
-                scanIndexStart += 5;
+                notifications.show({
+                    title: 'Error',
+                    message:
+                        'Failed to scan for change addresses with balance. Refresh the page to retry.',
+                    autoClose: false,
+                    color: 'red',
+                });
+                throw e;
             }
+        }
 
-            lastReceiveIndex = latestWithFunds;
-            userSettings.setSetting('lastReceiveIndex', lastReceiveIndex);
-            console.info('Address scan complete. Last address index with funds', lastReceiveIndex);
+        if (notifId) {
             notifications.hide(notifId);
-            notifications.show({
-                title: 'Initial scan complete',
-                message: `${addressesWithBalancesFound} ${
-                    addressesWithBalancesFound <= 1 ? 'address' : 'addresses'
-                } with balance found`,
-            });
         }
+        notifications.show({
+            title: 'Initial scan complete',
+            message: `${totalAddressesFound} ${
+                totalAddressesFound <= 1 ? 'address' : 'addresses'
+            } with balance found`,
+        });
 
-        for (let addressIndex = 0; addressIndex <= lastReceiveIndex; addressIndex++) {
-            const addressType = 0; // Receive
-            const derivationPath = `44'/111111'/0'/${addressType}/${addressIndex}`;
-            const address = bip32.getAddress(addressType, addressIndex);
-            const receiveAddress = {
-                key: address,
-                address,
-                derivationPath,
-                balance: 0,
-                loading: true,
-                addressIndex,
-                addressType,
-                utxos: [],
-            };
+        // Load receive addresses
+        await loadAddressesForType(
+            bip32,
+            0,
+            lastReceiveIndex,
+            rawAddresses,
+            callback,
+            callbackSetRawAddresses,
+            lastReceiveIndex,
+            lastChangeIndex,
+        );
 
-            rawAddresses.push(receiveAddress);
-
-            callbackSetRawAddresses(rawAddresses);
-            callback(rawAddresses.filter(addressFilter(lastReceiveIndex)));
-        }
-
-        let promises = [];
-        for (const rawAddress of rawAddresses) {
-            if (!rawAddress.loading) {
-                continue;
-            }
-
-            promises.push(
-                loadAddressDetails(rawAddress).then((data) => {
-                    callback(rawAddresses.filter(addressFilter(lastReceiveIndex)));
-                    return data;
-                }),
-            );
-
-            if (promises.length >= 5) {
-                await Promise.all(promises);
-
-                promises = [];
-            }
-        }
-
-        if (promises.length >= 0) {
-            await Promise.all(promises);
-
-            promises = [];
-        }
+        // Load change addresses
+        await loadAddressesForType(
+            bip32,
+            1,
+            lastChangeIndex,
+            rawAddresses,
+            callback,
+            callbackSetRawAddresses,
+            lastReceiveIndex,
+            lastChangeIndex,
+        );
     } finally {
         addressInitialized = true;
         loadingAddressBatch = false;
